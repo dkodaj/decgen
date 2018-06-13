@@ -28,4 +28,4 @@ DecGen.encoders sampleCode ==
 
 ## Use it from the browser
 
-Copy/paste your code into the [live version](https://dkodaj.github.io/decgen/index.html).
+Copy/paste your code into the [live version](https://dkodaj.github.io/decgen).
