@@ -37,17 +37,23 @@ grabTypeDefs: String -> List TypeDef
 grabTypeDefs txt =
     let
         toTypeDef a =
-            { name = a.name, theType = typeOf True a.typeDef }
+            { name = a.name, theType = typeOf a }
     in
         map toTypeDef <| grabRawTypes txt 
 
 grabRawType: List (Maybe String) -> Maybe RawType
 grabRawType submatches =
-    case submatches of
-        Just a:: Just b ::cs->
-            Just { name = trim a, typeDef = trim <| singleLine b }
-        _->
-            Nothing
+    let
+        toBool a =
+            case a of
+                Just _-> True
+                Nothing-> False
+    in
+        case submatches of
+            a:: Just b:: Just c ::cs->
+                Just { name = trim b, def = trim <| singleLine c, isAlias = toBool a }
+            _->
+                Nothing
 
 grabRawTypes: String -> List RawType
 grabRawTypes txt =
@@ -56,79 +62,81 @@ grabRawTypes txt =
 regexIt: String -> List Match
 regexIt txt = find All typeRegex txt
 
-typeRegex = regex "type\\s+(?:alias )?\\s*(\\w+)\\s*=([\\w(){},|.:_ \\r\\n]+)(?=(?:\\r\\w|\\n\\w)|$)"
+typeRegex = regex "type\\s+(alias )?\\s*(\\w+)\\s*=([\\w(){},|.:_ \\r\\n]+)(?=(?:\\r\\w|\\n\\w)|$)"
 
 
 --== Recognize types ==--
 
-typeOf: Bool -> String -> Type
-typeOf checkUnion def = 
---  typeOf x "List String" == TypeList TypeString
---  typeOf x "(String, Int)" == TypeTuple (TypeString, TypeInt)
---  typeOf True "A String | B" == TypeUnion [ ("A", [TypeString] ), ("B", []) ]
---  tyoeOf False "A String | B" == TypeAlias "A String | B"
---  typeOf True "A" == TypeUnion [ ("A", []) ]
---  typeOf False "A" == TypeAlias "A"
-    case detuple def of
-        Just (a,b)->
-            TypeTuple (typeOf False a, typeOf False b)
-        Nothing->
-            case derecord def of
-                x::xs->
-                    let
-                        makeField (a,b) = Field a (typeOf False b)
-                    in
-                        TypeRecord <| map makeField (x::xs)
-                []->
-                    case words (debracket def) of
-                        []->
-                            TypeAlias "Type conversion error: empty string"
-                        x::xs->
-                            case x of
-                                "Array"->
-                                    TypeArray (typeOf False <| dropWord x <| debracket def)
-                                "Bool"->
-                                    TypeBool
-                                "Dict"->
-                                    case deunion (debracket def) of
-                                        (_,x::y::zs)::vs->
-                                            TypeDict (typeOf False x, typeOf False y)
-                                        _->
-                                            TypeAlias "Error parsing def as a Dict"
-                                "Dict.Dict"->
-                                    case deunion (debracket def) of
-                                        (_,x::y::zs)::vs->
-                                            TypeDict (typeOf False x, typeOf False y)
-                                        _->
-                                            TypeAlias "Error parsing def as a Dict"
-                                "Float"->
-                                    TypeFloat
-                                "Int"->
-                                    TypeInt
-                                "List"->
-                                    TypeList (typeOf False <| dropWord x <| debracket def)
-                                "Maybe"->
-                                    TypeMaybe (typeOf False <| dropWord x <| debracket def)
-                                "String"->
-                                    TypeString
-                                _->
-                                    case checkUnion of
-                                        True->
-                                            case deunion def of
-                                                x::xs->
-                                                    let
-                                                        constructor (a,b) = 
-                                                            case b of
-                                                                [""]->
-                                                                    (a, [])
-                                                                _->
-                                                                    (a, map (typeOf False) b)
-                                                    in
-                                                        TypeUnion <| map constructor (x::xs)
-                                                []->
-                                                    TypeAlias "Union type conversion error: empty string"
-                                        False->
-                                            TypeAlias (removeColons x)
+typeOf: RawType -> Type
+typeOf raw = 
+--  typeOf { name = "MyType", def = "List String", isAlias = False } == TypeList TypeString
+--  typeOf { name = "MyType", def = "X", isAlias = False } == TypeUnion (TypeOpaque "X")
+--  typeOf { name = "MyType", def = "String", isAlias = True } == TypeString
+    let
+        def = raw.def
+        subType a = typeOf { name = "", def = a, isAlias = True } 
+    in
+        case detuple def of
+            Just (a,b)->
+                TypeTuple (subType a, subType b)
+            Nothing->
+                case derecord def of
+                    x::xs->
+                        let
+                            makeField (a,b) = Field a (subType b)
+                        in
+                            TypeRecord <| map makeField (x::xs)
+                    []->
+                        case words (debracket def) of
+                            []->
+                                TypeOpaque "Type conversion error: empty string"
+                            x::xs->
+                                case x of
+                                    "Array"->
+                                        TypeArray (subType <| dropWord x <| debracket def)
+                                    "Bool"->
+                                        TypeBool
+                                    "Dict"->
+                                        case deunion (debracket def) of
+                                            (_,x::y::zs)::vs->
+                                                TypeDict (subType x, subType y)
+                                            _->
+                                                TypeOpaque "Error parsing def as a Dict"
+                                    "Dict.Dict"->
+                                        case deunion (debracket def) of
+                                            (_,x::y::zs)::vs->
+                                                TypeDict (subType x, subType y)
+                                            _->
+                                                TypeOpaque "Error parsing def as a Dict"
+                                    "Float"->
+                                        TypeFloat
+                                    "Int"->
+                                        TypeInt
+                                    "List"->
+                                        TypeList (subType <| dropWord x <| debracket def)
+                                    "Maybe"->
+                                        TypeMaybe (subType <| dropWord x <| debracket def)
+                                    "String"->
+                                        TypeString
+                                    _->
+                                        case raw.isAlias of
+                                            True->
+                                                TypeOpaque (removeColons x)
+                                            False->
+                                                case deunion def of
+                                                    x::xs->
+                                                        let
+                                                            constructor (a,b) = 
+                                                                case b of
+                                                                    [""]->
+                                                                        (a, [])
+                                                                    _->
+                                                                        (a, map subType b)
+                                                        in
+                                                            TypeUnion <| map constructor (x::xs)
+                                                    []->
+                                                        TypeOpaque "Union type conversion error: empty string"
+
 
 typeDescr: Bool -> Type -> String
 typeDescr bracketIt a =
@@ -141,8 +149,6 @@ typeDescr bracketIt a =
                 else a
     in
         case a of
-            TypeAlias b->
-                b
             TypeArray b->
                wrap <| "Array " ++ typeDescr True b
             TypeBool->
@@ -157,6 +163,8 @@ typeDescr bracketIt a =
                 wrap <| "List " ++ typeDescr True b
             TypeMaybe b->
                 wrap <| "Maybe " ++ typeDescr True b
+            TypeOpaque b->
+                b
             TypeRecord b->
                 let
                     fieldString x = x.name ++ ": " ++ typeDescr False x.fieldType ++ ", "

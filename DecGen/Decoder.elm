@@ -22,8 +22,6 @@ decoderHelp topLevel name a =
             x ++ " " ++ ( bracketIfSpaced <| decoderHelp False "" y )
     in
         case a of
-            TypeAlias b->
-                "decode"++b
             TypeArray b->
                 recurseOn "Dec.array" b
             TypeBool->
@@ -56,7 +54,8 @@ decoderHelp topLevel name a =
                 recurseOn "Dec.list" b
             TypeMaybe b->
                 recurseOn "Dec.nullable" b
-
+            TypeOpaque b->
+                "decode"++b
             TypeRecord b->
                 case topLevel of
                     True->

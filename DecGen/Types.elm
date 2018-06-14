@@ -1,14 +1,14 @@
 module DecGen.Types exposing (..)
 
 type Type = 
-      TypeAlias String
-    | TypeArray Type
+      TypeArray Type
     | TypeBool
     | TypeDict (Type, Type)
     | TypeFloat
     | TypeInt
     | TypeList Type
     | TypeMaybe Type
+    | TypeOpaque String --a type not defined in the source
     | TypeRecord (List Field)
     | TypeString
     | TypeTuple (Type, Type)
@@ -21,7 +21,8 @@ type alias Field = {
 
 type alias RawType = {
       name: String
-    , typeDef: String  
+    , def: String
+    , isAlias: Bool  
     }
 
 type alias TypeDef = {

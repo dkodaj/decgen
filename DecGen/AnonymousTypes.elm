@@ -25,8 +25,6 @@ anonymous typeDef =
 anonymousHelp: Bool -> Type -> List Type -> List Type
 anonymousHelp topLevel a xs =
     case a of
-        TypeAlias b->
-            xs
         TypeArray b->
            anonymousHelp False b xs
         TypeBool->
@@ -48,6 +46,8 @@ anonymousHelp topLevel a xs =
             anonymousHelp False b xs
         TypeMaybe b->
             anonymousHelp False b xs
+        TypeOpaque b->
+            xs
         TypeRecord b->
             let
                 recurseOn = foldr (<<) identity <| map (anonymousHelp False) <| map .fieldType b 

@@ -33,9 +33,7 @@ encoderHelp topLevel name a =
         recurseOn x y z =
             x ++ " << (" ++ y ++ " " ++ ( bracketIfSpaced <| encoderHelp False "" z ) ++ ")"
     in
-        case a of
-            TypeAlias b->
-                maybeAppend <| "encode"++b
+        case a of            
             TypeArray b->
                 maybeAppend <| recurseOn "Enc.array" "Array.map" b
             TypeBool->
@@ -66,6 +64,9 @@ encoderHelp topLevel name a =
                                 "encode" ++ typeNick a
                             _->
                                 "encode" ++ name     
+            TypeOpaque b->
+                maybeAppend <| "encode"++b
+                
             TypeRecord b->
                 case topLevel of
                     True->
