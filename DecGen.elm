@@ -5,8 +5,7 @@ import DecGen.Encoder exposing (encoder)
 import DecGen.Types exposing (TypeDef)
 import DecGen.TypeExtract exposing (extractAll, grabRawTypes, grabTypeDefs)
 
-import Html exposing (br, div, Html, text)
-import List exposing (concat, filter, foldr, map, sortBy)
+import List exposing (concat, map, sortBy)
 import String exposing (contains, join)
 
 both: String -> String
