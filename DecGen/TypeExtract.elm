@@ -37,7 +37,7 @@ grabTypeDefs: String -> List TypeDef
 grabTypeDefs txt =
     let
         toTypeDef a =
-            { name = a.name, theType = typeOf a }
+            { name = a.name, theType = typeOf True a.def }
     in
         map toTypeDef <| grabRawTypes txt 
 
@@ -50,8 +50,8 @@ grabRawType submatches =
                 Nothing-> False
     in
         case submatches of
-            a:: Just b:: Just c ::cs->
-                Just { name = trim b, def = trim <| singleLine c, isAlias = toBool a }
+            Just a:: Just b ::cs->
+                Just { name = trim a, def = trim <| singleLine b }
             _->
                 Nothing
 
@@ -62,19 +62,20 @@ grabRawTypes txt =
 regexIt: String -> List Match
 regexIt txt = find All typeRegex txt
 
-typeRegex = regex "type\\s+(alias )?\\s*(\\w+)\\s*=([\\w(){},|.:_ \\r\\n]+)(?=(?:\\r\\w|\\n\\w)|$)"
+typeRegex = regex "type\\s+(?:alias )?\\s*(\\w+)\\s*=([\\w(){},|.:_ \\r\\n]+)(?=(?:\\r\\w|\\n\\w)|$)"
 
 
 --== Recognize types ==--
 
-typeOf: RawType -> Type
-typeOf raw = 
---  typeOf { name = "MyType", def = "List String", isAlias = False } == TypeList TypeString
---  typeOf { name = "MyType", def = "X", isAlias = False } == TypeUnion (TypeOpaque "X")
---  typeOf { name = "MyType", def = "String", isAlias = True } == TypeString
+typeOf: Bool-> String  -> Type
+typeOf maybeUnion def  = 
+--  typeOf True "List String" == TypeList TypeString
+--  typeOf False "List String" == TypeList TypeString
+--  typeOf True "MyType | String" == TypeUnion [TypeOpaque "MyType", TypeString]
+--  typeOf True "MyType" == TypeUnion [TypeOpaque "MyType"]
+--  typeOf False "MyType" == TypeOpaque "MyType"
     let
-        def = raw.def
-        subType a = typeOf { name = "", def = a, isAlias = True } 
+        subType a = typeOf False a
     in
         case detuple def of
             Just (a,b)->
@@ -119,10 +120,8 @@ typeOf raw =
                                     "String"->
                                         TypeString
                                     _->
-                                        case raw.isAlias of
+                                        case maybeUnion of
                                             True->
-                                                TypeOpaque (removeColons x)
-                                            False->
                                                 case deunion def of
                                                     x::xs->
                                                         let
@@ -136,6 +135,8 @@ typeOf raw =
                                                             TypeUnion <| map constructor (x::xs)
                                                     []->
                                                         TypeOpaque "Union type conversion error: empty string"
+                                            False->
+                                                TypeOpaque (removeColons x)
 
 
 typeDescr: Bool -> Type -> String

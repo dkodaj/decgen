@@ -22,7 +22,6 @@ type alias Field = {
 type alias RawType = {
       name: String
     , def: String
-    , isAlias: Bool  
     }
 
 type alias TypeDef = {
