@@ -150,7 +150,7 @@ debracket txt =
 decomment txt = 
     let
         singleComment = regex "--.*"
-        multiComment = regex "\\{-(.|\\s)*-}"        
+        multiComment = regex "\\{\\-(.|\\n)*\\-\\}"        
     in
         remove singleComment <| remove multiComment txt
 
