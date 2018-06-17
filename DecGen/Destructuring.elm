@@ -1,8 +1,8 @@
 module DecGen.Destructuring exposing (..)
 
-import List exposing (concat, filter, foldl, foldr, map, range, reverse)
-import Regex exposing (find, HowMany(..), regex, replace)
-import String exposing (contains, dropLeft, dropRight, fromChar, join, indices, left, length, right, split, repeat, toLower, toUpper, trim, words)
+import List exposing (concat, map)
+import Regex exposing (HowMany(..), regex, replace)
+import String exposing (dropLeft, dropRight, indices, join, left, length, repeat, right, split, toUpper, trim, words)
 
 --== Destructuring records, tuples, union types ==--
 
@@ -189,6 +189,8 @@ quote txt =
 remove a b = replace All a (\_ -> "") b
 
 removeColons txt = remove (regex "\\.") txt
+
+removeStringLiterals txt = remove (regex "\".*?\"") txt
 
 singleLine txt =
     singleSpace <| replace All (regex "[\\r\\n]") (\a->" ") txt

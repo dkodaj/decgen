@@ -1,11 +1,10 @@
 module DecGen.Encoder exposing (encoder)
 
-import DecGen.Destructuring exposing (..)
-import DecGen.Types exposing (Field, Type(..), TypeDef)
+import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab)
 import DecGen.TypeExtract exposing (typeNick)
-
-import List exposing (filter, foldl, foldr, map, map2, range, reverse)
-import String exposing (contains, dropLeft, dropRight, fromChar, join, indices, left, length, right, split, repeat, toUpper, trim, words)
+import DecGen.Types exposing (Field, Type(..), TypeDef)
+import List exposing (filter, map, map2, range)
+import String exposing (join, split)
 
 
 encoder: TypeDef -> List String

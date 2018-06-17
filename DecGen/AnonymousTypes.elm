@@ -1,10 +1,7 @@
 module DecGen.AnonymousTypes exposing (grabAnonymousTypes)
 
-import DecGen.Types exposing (..)
-
-import List exposing (concat, filter, foldl, foldr, map, range, reverse)
-import String exposing (contains, dropLeft, dropRight, fromChar, join, indices, left, length, right, split, repeat, toUpper, trim, words)
-
+import DecGen.Types exposing (Type(..), TypeDef)
+import List exposing (concat, filter, foldr, map)
 
 --== Find anonymous types ==--
 

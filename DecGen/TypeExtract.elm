@@ -1,13 +1,11 @@
 module DecGen.TypeExtract exposing (extractAll, grabRawTypes, grabTypeDefs, typeNick)
 
 import DecGen.AnonymousTypes exposing (grabAnonymousTypes)
-import DecGen.Destructuring exposing (..)
+import DecGen.Destructuring exposing (bracketIfSpaced, civilize, clean, debracket, decomment, derecord, detuple, deunion, dropWord, removeColons, removeStringLiterals, singleLine)
 import DecGen.Types exposing (Field, RawType, Type(..), TypeDef)
-
-import List exposing (filter, foldl, foldr, map, range, reverse)
-import Regex exposing (find, HowMany(..), Match, regex, replace)
-import String exposing (contains, dropLeft, dropRight, fromChar, join, indices, left, length, right, split, repeat, toUpper, trim, words)
-
+import List exposing (map)
+import Regex exposing (find, HowMany(..), Match, regex)
+import String exposing (dropRight, trim, words)
 
 
 aliasDefs: List TypeDef -> List (List String)
@@ -57,7 +55,7 @@ grabRawType submatches =
 
 grabRawTypes: String -> List RawType
 grabRawTypes txt =
-    clean <| map grabRawType <| map .submatches <| regexIt <| decomment txt
+    clean <| map grabRawType <| map .submatches <| regexIt <| decomment <| removeStringLiterals txt
 
 regexIt: String -> List Match
 regexIt txt = find All typeRegex txt
