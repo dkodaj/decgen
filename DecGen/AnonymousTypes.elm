@@ -1,7 +1,7 @@
 module DecGen.AnonymousTypes exposing (grabAnonymousTypes)
 
 import DecGen.Types exposing (Type(..), TypeDef)
-import List exposing (concat, filter, foldr, map)
+import List exposing (any, concat, foldr, map)
 
 --== Find anonymous types ==--
 
@@ -85,9 +85,9 @@ uniqueHelp checked remaining =
         []->
             checked
         x::xs->
-            case filter (\a->(a==x)) (checked++xs) of
-                []->
+            case any (\a->(a==x)) (checked++xs) of
+                False->
                     uniqueHelp (x::checked) xs
-                _->
+                True->
                    uniqueHelp checked xs 
 

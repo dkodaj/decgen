@@ -190,7 +190,7 @@ remove a b = replace All a (\_ -> "") b
 
 removeColons txt = remove (regex "\\.") txt
 
-removeStringLiterals txt = remove (regex "\".*?\"") txt
+removeStringLiterals txt = remove (regex "\".*?\"") <| remove (regex "\"\"\"(?:\\n|.)+?\"\"\"") txt 
 
 singleLine txt =
     singleSpace <| replace All (regex "[\\r\\n]") (\a->" ") txt
