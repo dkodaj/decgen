@@ -3,7 +3,7 @@ module DecGen.Decoder exposing (decoder)
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
 import DecGen.Types exposing (Field, Type(..), TypeDef)
-import List exposing (concat, filter, map, range)
+import List exposing (concat, filter, indexedMap, map, range)
 import String exposing (join, split)
 
 decoder: TypeDef -> List String
@@ -55,6 +55,16 @@ decoderHelp topLevel name a =
                 recurseOn "Dec.nullable" b
             TypeOpaque b->
                 "decode"++b
+            TypeProduct b->
+                case topLevel of
+                    True->
+                        decoderProduct b
+                    False->
+                        case name of
+                            ""->
+                                "decode" ++ typeNick a
+                            _->
+                                "decode" ++ name
             TypeRecord b->
                 case topLevel of
                     True->
@@ -99,6 +109,25 @@ decoderHelp topLevel name a =
                             _->
                                 "decode" ++ name
 
+decoderProduct: (String, List Type) -> String
+decoderProduct (constructor, subTypes) =
+    let
+        fieldDecode (a,b) = "|> required " ++ (quote <| capitalize a) ++ " " ++ (subDecoder b)
+        fields = map (\(a,b)->(var a,b)) <| indexedMap (,) subTypes
+        subDecoder a = bracketIfSpaced <| decoderHelp False "" a
+    in
+     case subTypes of
+        []->
+            "Dec.succeed " ++ constructor
+        x::[]->
+            "Dec.map " ++ constructor ++ " " ++ subDecoder x
+        _->
+            join "\n" <|
+                [ "decode"
+                , tab 1 constructor
+                ] ++
+                (map (tab 2) <| map fieldDecode fields)
+
 decoderRecord: String -> List Field -> String
 decoderRecord name xs =
     let
@@ -124,6 +153,7 @@ decoderUnion xs =
                 decoderUnionUgly xs
 
 decoderUnionSimple: List (String, List Type) -> String
+--e.g. type Color = Red | Green | Blue 
 decoderUnionSimple xs =
     let
         constructor (a,b) =
@@ -136,6 +166,7 @@ decoderUnionSimple xs =
             ["in", tab 1 "Dec.string |> andThen recover"]
 
 decoderUnionUgly: List (String, List Type) -> String
+--e.g. type A = B Int | C String
 decoderUnionUgly xs =
     let
         a = "b"

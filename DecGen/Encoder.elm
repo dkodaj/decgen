@@ -3,7 +3,7 @@ module DecGen.Encoder exposing (encoder)
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab)
 import DecGen.TypeExtract exposing (typeNick)
 import DecGen.Types exposing (Field, Type(..), TypeDef)
-import List exposing (filter, map, map2, range)
+import List exposing (filter, indexedMap, length, map, map2, range)
 import String exposing (join, split)
 
 
@@ -15,6 +15,18 @@ encoder typeDef =
             case typeDef.theType of
                 TypeTuple _->
                     "encode" ++ typeDef.name ++ " (a,b) ="
+                TypeProduct (b,c)->
+                    case c of
+                        []->
+                            "encode" ++ typeDef.name ++ " a ="
+                        x::[]->
+                            "encode" ++ typeDef.name ++ " ("++ b++" a) ="
+                        _->
+                            let
+                                vars = map var (range 0 (length c - 1))
+                                varList = join " " vars
+                            in
+                                "encode" ++ typeDef.name ++ " ("++ b++" "++varList ++") ="
                 _->
                    "encode" ++ typeDef.name ++ " a =" 
     in
@@ -26,7 +38,7 @@ encoderHelp topLevel name a =
         maybeAppend txt =
             case topLevel of
                 True->
-                    txt ++ " a"
+                    (bracketIfSpaced txt) ++ " a"
                 False->
                     txt
         recurseOn x y z =
@@ -65,7 +77,17 @@ encoderHelp topLevel name a =
                                 "encode" ++ name     
             TypeOpaque b->
                 maybeAppend <| "encode"++b
-                
+            
+            TypeProduct b->
+                case topLevel of
+                    True->
+                        encoderProduct b
+                    False->
+                        case name of
+                            ""->
+                                "encode" ++ typeNick a
+                            _->
+                                "encode" ++ name
             TypeRecord b->
                 case topLevel of
                     True->
@@ -105,15 +127,15 @@ encoderDict name (b,c) =
     let
         subEncoderName = "encode" ++ name ++ "Tuple"
     in
-    join "\n" <|
-        [ "let"
-        , tab 1 <| subEncoderName ++ " (b,c) ="
-        , tab 2 "object"
-        , tab 3 <| "[ (\"First\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " b)" 
-        , tab 3 <| ", (\"Second\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " c) ]" 
-        , "in"
-        , tab 1 <| "(Enc.list << List.map " ++ subEncoderName ++ ") (Dict.toList a)"
-        ]
+        join "\n" <|
+            [ "let"
+            , tab 1 <| subEncoderName ++ " (b,c) ="
+            , tab 2 "object"
+            , tab 3 <| "[ (\"First\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " b)" 
+            , tab 3 <| ", (\"Second\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " c) ]" 
+            , "in"
+            , tab 1 <| "(Enc.list << List.map " ++ subEncoderName ++ ") (Dict.toList a)"
+            ]
 
 encoderMaybe: Type -> String
 encoderMaybe x =
@@ -124,6 +146,24 @@ encoderMaybe x =
         , tab 1 "Nothing->"
         , tab 2 "Enc.null" 
         ]
+
+encoderProduct: (String, List Type) -> String
+encoderProduct (constructor, subTypes) =
+    let
+        fieldEncode (a,b) = "(" ++ (quote <| capitalize a) ++ ", " ++ (subEncoder b) ++ " " ++ a ++ ")"
+        fields = map (\(a,b)->(var a,b)) <| indexedMap (,) subTypes
+        subEncoder a = bracketIfSpaced <| encoderHelp False "" a
+    in
+        case subTypes of
+            []->
+                "Enc.string " ++ constructor
+            x::[]->
+                subEncoder x ++ " a"
+            _->
+                join "\n" <|
+                    ["object"] ++
+                    (map (tab 1) <| bracketCommas <| map fieldEncode fields) ++
+                    [ tab 1 "]"]
 
 encoderRecord: List Field -> String
 encoderRecord xs =

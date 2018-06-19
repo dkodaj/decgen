@@ -9,6 +9,7 @@ type Type =
     | TypeList Type
     | TypeMaybe Type
     | TypeOpaque String --a type not defined in the source
+    | TypeProduct (String, List Type)
     | TypeRecord (List Field)
     | TypeString
     | TypeTuple (Type, Type)

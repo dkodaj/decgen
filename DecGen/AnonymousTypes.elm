@@ -45,6 +45,12 @@ anonymousHelp topLevel a xs =
             anonymousHelp False b xs
         TypeOpaque b->
             xs
+        TypeProduct (b,c)->
+            case c of
+                []->
+                    xs
+                _->
+                    ( foldr (<<) identity <| map (anonymousHelp False) c ) xs
         TypeRecord b->
             let
                 recurseOn = foldr (<<) identity <| map (anonymousHelp False) <| map .fieldType b 

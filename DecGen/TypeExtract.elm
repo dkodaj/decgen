@@ -120,27 +120,29 @@ typeOf maybeUnion def  =
                                     _->
                                         case maybeUnion of
                                             True->
-                                                case deunion def of
-                                                    x::xs->
-                                                        let
-                                                            constructor (a,b) = 
-                                                                case b of
-                                                                    [""]->
-                                                                        (a, [])
-                                                                    _->
-                                                                        (a, map subType b)
-                                                        in
+                                                let
+                                                    constructor (a,b) = 
+                                                        case b of
+                                                            [""]->
+                                                                (a, [])
+                                                            _->
+                                                                (a, map subType b)
+                                                in
+                                                    case deunion def of
+                                                        x::[]->
+                                                            TypeProduct (constructor x)
+                                                        x::xs->
                                                             TypeUnion <| map constructor (x::xs)
-                                                    []->
-                                                        TypeOpaque "Union type conversion error: empty string"
+                                                        []->
+                                                            TypeOpaque "Union type conversion error: empty string"
                                             False->
                                                 TypeOpaque (removeColons x)
 
 
 typeDescr: Bool -> Type -> String
 typeDescr bracketIt a =
---    typeDescr False <| TypeList TypeInt == "List Int"
---    typeDescr True <| TypeList TypeInt == "(List Int)"       
+--    typeDescr False (TypeList TypeInt) == "List Int"
+--    typeDescr True (TypeList TypeInt) == "(List Int)"       
     let
         wrap a =
             if bracketIt
@@ -164,6 +166,12 @@ typeDescr bracketIt a =
                 wrap <| "Maybe " ++ typeDescr True b
             TypeOpaque b->
                 b
+            TypeProduct (b,c)->
+                case c of
+                    []->
+                        b
+                    _->
+                        b ++ " " ++ (String.concat <| map (typeDescr True) c)
             TypeRecord b->
                 let
                     fieldString x = x.name ++ ": " ++ typeDescr False x.fieldType ++ ", "
