@@ -2,9 +2,7 @@ module DecGen exposing (both, decoders, encoders, imports)
 
 import DecGen.Decoder exposing (decoder)
 import DecGen.Encoder exposing (encoder)
-import DecGen.Types exposing (TypeDef)
-import DecGen.TypeExtract exposing (extractAll, grabRawTypes, grabTypeDefs)
-
+import DecGen.TypeExtract exposing (extractAll)
 import List exposing (concat, map, sortBy)
 import String exposing (contains, join)
 
