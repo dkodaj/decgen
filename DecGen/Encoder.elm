@@ -18,8 +18,6 @@ encoder typeDef =
                     case c of
                         []->
                             "encode" ++ typeDef.name ++ " a ="
-                        x::[]->
-                            "encode" ++ typeDef.name ++ " ("++ b++" a) ="
                         _->
                             let
                                 vars = map var <| range 1 (length c)
