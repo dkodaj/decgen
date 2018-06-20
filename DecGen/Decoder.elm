@@ -135,8 +135,6 @@ decoderProduct (constructor, subTypes) =
          case subTypes of
             []->
                 "Dec.succeed " ++ constructor
-            x::[]->
-                "Dec.map " ++ constructor ++ " " ++ subDecoder x
             _->
                 join "\n" <|
                     [ "decode"

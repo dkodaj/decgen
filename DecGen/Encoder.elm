@@ -171,8 +171,6 @@ encoderProduct addConstructor (constructor, subTypes) =
         case subTypes of
             []->
                 "Enc.string " ++ quote constructor
-            x::[]->
-                subEncoder x ++ " a1"
             _->
                 join "\n" <|
                     ["object"] ++
