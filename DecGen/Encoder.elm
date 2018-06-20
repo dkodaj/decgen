@@ -172,7 +172,7 @@ encoderProduct addConstructor (constructor, subTypes) =
             []->
                 "Enc.string " ++ quote constructor
             x::[]->
-                subEncoder x ++ " a"
+                subEncoder x ++ " a1"
             _->
                 join "\n" <|
                     ["object"] ++
