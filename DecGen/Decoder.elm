@@ -185,8 +185,7 @@ decoderUnionComplex: String -> List (String, List Type) -> String
 decoderUnionComplex name xs =
     let
         decodeConstructor (constructor, fields) =
-            quote constructor ++ " " ++ (varList fields) ++ " ->\n" ++ (tabLines 1 <| decoderProduct (constructor, fields))
-        varList a = join " " <| map var <| range 1 (length a)
+            quote constructor ++  " ->\n" ++ (tabLines 1 <| decoderProduct (constructor, fields))
     in
         join "\n" <|
             [ tab 1 <| "Dec.field \"Constructor\" Dec.string |> andThen decode" ++ name ++ "Help" ++ "\n"
