@@ -3,7 +3,7 @@ module DecGen.Decoder exposing (decoder)
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
 import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
-import List exposing (concat, filter, map, range)
+import List exposing (concat, filter, length, map, map2, range)
 import String exposing (join, split)
 
 decoder: TypeDef -> List String
@@ -118,9 +118,10 @@ decoderHelp topLevel name a =
 decoderProduct: (String, List Type) -> String
 decoderProduct (constructor, subTypes) =
     let
-        fieldDecode (a,b) = "|> required " ++ (quote a) ++ " " ++ (subDecoder b)
-        fieldDefs = map (\b->(typeNick b,b)) subTypes
+        fieldDecode (a,b) = "|> required " ++ (quote <| capitalize a) ++ " " ++ (subDecoder b)
+        fieldDefs = map2 (\a b->(a,b)) vars subTypes
         subDecoder a = bracketIfSpaced <| decoderHelp False "" a
+        vars = map var <| range 1 (length subTypes)
         subEncoder a = 
             let
                 fullDecoder = decoderHelp True "" a
@@ -184,7 +185,8 @@ decoderUnionComplex: String -> List (String, List Type) -> String
 decoderUnionComplex name xs =
     let
         decodeConstructor (constructor, fields) =
-            quote constructor ++ "->\n" ++ (tabLines 1 <| decoderProduct (constructor, fields))
+            quote constructor ++ " " ++ (varList fields) ++ " ->\n" ++ (tabLines 1 <| decoderProduct (constructor, fields))
+        varList a = join " " <| map var <| range 1 (length a)
     in
         join "\n" <|
             [ tab 1 <| "Dec.field \"Constructor\" Dec.string |> andThen decode" ++ name ++ "Help" ++ "\n"

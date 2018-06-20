@@ -149,8 +149,8 @@ encoderMaybe x =
 encoderProduct: Bool -> (String, List Type) -> String
 encoderProduct addConstructor (constructor, subTypes) =
     let
-        fieldDefs = map2 (\a (b,c) -> (a,(b,c))) vars <| map (\c->(typeNick c,c)) subTypes
-        fieldEncode (a,(b,c)) = "(" ++ (quote b) ++ ", " ++ (subEncoder c) ++ " " ++ a ++ ")"
+        fieldDefs = map2 (\a b -> (a,b)) vars subTypes
+        fieldEncode (a,b) = "(" ++ (quote <| capitalize a) ++ ", " ++ (subEncoder b) ++ " " ++ a ++ ")"
         vars = map var <| range 1 (length subTypes)
         subEncoder a = 
             let
