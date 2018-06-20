@@ -1,11 +1,10 @@
 module DecGen.Encoder exposing (encoder)
 
-import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab)
+import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
-import DecGen.Types exposing (Field, Type(..), TypeDef)
-import List exposing (filter, indexedMap, length, map, map2, range)
-import String exposing (join, split)
-
+import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
+import List exposing (filter, length, map, map2, range)
+import String exposing (contains, dropRight, join, split)
 
 encoder: TypeDef -> List String
 encoder typeDef =
@@ -23,7 +22,7 @@ encoder typeDef =
                             "encode" ++ typeDef.name ++ " ("++ b++" a) ="
                         _->
                             let
-                                vars = map var (range 0 (length c - 1))
+                                vars = map var <| range 1 (length c)
                                 varList = join " " vars
                             in
                                 "encode" ++ typeDef.name ++ " ("++ b++" "++varList ++") ="
@@ -81,7 +80,7 @@ encoderHelp topLevel name a =
             TypeProduct b->
                 case topLevel of
                     True->
-                        encoderProduct b
+                        encoderProduct False b
                     False->
                         case name of
                             ""->
@@ -147,22 +146,37 @@ encoderMaybe x =
         , tab 2 "Enc.null" 
         ]
 
-encoderProduct: (String, List Type) -> String
-encoderProduct (constructor, subTypes) =
+encoderProduct: Bool -> (String, List Type) -> String
+encoderProduct addConstructor (constructor, subTypes) =
     let
-        fieldEncode (a,b) = "(" ++ (quote <| capitalize a) ++ ", " ++ (subEncoder b) ++ " " ++ a ++ ")"
-        fields = map (\(a,b)->(var a,b)) <| indexedMap (,) subTypes
-        subEncoder a = bracketIfSpaced <| encoderHelp False "" a
+        fieldDefs = map2 (\a (b,c) -> (a,(b,c))) vars <| map (\c->(typeNick c,c)) subTypes
+        fieldEncode (a,(b,c)) = "(" ++ (quote b) ++ ", " ++ (subEncoder c) ++ " " ++ a ++ ")"
+        vars = map var <| range 1 (length subTypes)
+        subEncoder a = 
+            let
+                fullEncoder = dropRight 2 <| encoderHelp True "" a
+            in
+                case coreType a of
+                    True->
+                        fullEncoder
+                    False->
+                        bracketIfSpaced <| encoderHelp False "" a                        
+        constrEncode =
+                case addConstructor of
+                    False->
+                        []
+                    True->
+                        ["(\"Constructor\", Enc.string " ++ quote constructor ++")"]
     in
         case subTypes of
             []->
-                "Enc.string " ++ constructor
+                "Enc.string " ++ quote constructor
             x::[]->
                 subEncoder x ++ " a"
             _->
                 join "\n" <|
                     ["object"] ++
-                    (map (tab 1) <| bracketCommas <| map fieldEncode fields) ++
+                    (map (tab 1) <| bracketCommas <| constrEncode ++ map fieldEncode fieldDefs) ++
                     [ tab 1 "]"]
 
 encoderRecord: List Field -> String
@@ -203,39 +217,21 @@ encoderUnion xs =
             True->
                 encoderUnionSimple xs
             False->
-                encoderUnionUgly xs
+                encoderUnionComplex xs
 
 encoderUnionSimple: List (String, List Type) -> String
 encoderUnionSimple xs =
     "Enc.string <| toString a"
 
-encoderUnionUgly: List (String, List Type) -> String
-encoderUnionUgly xs =
+encoderUnionComplex: List (String, List Type) -> String
+encoderUnionComplex xs =
     let
-        x = 1
+        varList ys = join " " <| map var <| range 1 (length ys)
+        encodeConstructor (a, ys) =
+            tab 1 (a ++ " " ++ varList ys ++ "->" ++ "\n") ++ tabLines 2 (encoderProduct True (a,ys))
     in
         join "\n" <|
             ["case a of"] ++
-            ( map unionCase xs )
+            ( map encodeConstructor xs )
 
-unionCase: (String, List Type) -> String
-unionCase (constructor, types) =
-    let
-        toTuple a b = (a,b)
-        vars = map var <| range 1 (List.length types)
-        varList = join " " vars
-        varsTypes = map2 toTuple vars types
-    in
-        join "\n" <|
-            [ tab 1 <| constructor ++ " " ++ varList ++ "->"
-            , tab 2 "Enc.list"
-            , tab 3 <| "[ Enc.string " ++ quote constructor 
-            ] ++
-            ( map (tab 3) <| map unionCaseHelp varsTypes ) ++
-            [ tab 3 "]" ]
-
-unionCaseHelp: (String, Type) -> String
-unionCaseHelp (varName, theType) =
-    ", " ++ (bracketIfSpaced <| encoderHelp False "" theType) ++ " " ++ varName
-
-var n = "a"++toString n
+var n = "a" ++ toString n

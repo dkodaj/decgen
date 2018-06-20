@@ -2,14 +2,20 @@ module DecGen.Decoder exposing (decoder)
 
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
-import DecGen.Types exposing (Field, Type(..), TypeDef)
-import List exposing (concat, filter, indexedMap, map, range)
+import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
+import List exposing (concat, filter, map, range)
 import String exposing (join, split)
 
 decoder: TypeDef -> List String
 decoder typeDef =
     let
-        decoderBody = map (tab 1) <| split "\n" <| decoderHelp True typeDef.name typeDef.theType
+        decoderBody = 
+            case typeDef.theType of
+                TypeUnion _->
+                    decoderBodyRaw
+                _->
+                    map (tab 1) decoderBodyRaw
+        decoderBodyRaw = split "\n" <| decoderHelp True typeDef.name typeDef.theType
         decoderName = "decode" ++ typeDef.name ++ " ="
     in
         decoderName :: decoderBody
@@ -101,7 +107,7 @@ decoderHelp topLevel name a =
             TypeUnion b->
                 case topLevel of
                     True->
-                        decoderUnion b
+                        decoderUnion name b
                     False->
                         case name of
                             ""->
@@ -112,21 +118,30 @@ decoderHelp topLevel name a =
 decoderProduct: (String, List Type) -> String
 decoderProduct (constructor, subTypes) =
     let
-        fieldDecode (a,b) = "|> required " ++ (quote <| capitalize a) ++ " " ++ (subDecoder b)
-        fields = map (\(a,b)->(var a,b)) <| indexedMap (,) subTypes
+        fieldDecode (a,b) = "|> required " ++ (quote a) ++ " " ++ (subDecoder b)
+        fieldDefs = map (\b->(typeNick b,b)) subTypes
         subDecoder a = bracketIfSpaced <| decoderHelp False "" a
+        subEncoder a = 
+            let
+                fullDecoder = decoderHelp True "" a
+            in
+                case coreType a of
+                    True->
+                        bracketIfSpaced <| fullDecoder
+                    False->
+                        bracketIfSpaced <| decoderHelp False "" a   
     in
-     case subTypes of
-        []->
-            "Dec.succeed " ++ constructor
-        x::[]->
-            "Dec.map " ++ constructor ++ " " ++ subDecoder x
-        _->
-            join "\n" <|
-                [ "decode"
-                , tab 1 constructor
-                ] ++
-                (map (tab 2) <| map fieldDecode fields)
+         case subTypes of
+            []->
+                "Dec.succeed " ++ constructor
+            x::[]->
+                "Dec.map " ++ constructor ++ " " ++ subDecoder x
+            _->
+                join "\n" <|
+                    [ "decode"
+                    , tab 1 constructor
+                    ] ++
+                    (map (tab 2) <| map fieldDecode fieldDefs)
 
 decoderRecord: String -> List Field -> String
 decoderRecord name xs =
@@ -140,98 +155,46 @@ decoderRecord name xs =
             ] ++
             (map (tab 2) <| map fieldDecode xs)
 
-decoderUnion: List (String, List Type) -> String
-decoderUnion xs =
+decoderUnion: String -> List (String, List Type) -> String
+decoderUnion name xs =
     let
         complexConstructor (a,b) = (b /= [])
         simpleUnion = filter complexConstructor xs == []
     in
         case simpleUnion of
             True->
-                decoderUnionSimple xs
+                decoderUnionSimple name xs
             False->
-                decoderUnionUgly xs
+                decoderUnionComplex name xs
 
-decoderUnionSimple: List (String, List Type) -> String
+decoderUnionSimple: String -> List (String, List Type) -> String
 --e.g. type Color = Red | Green | Blue 
-decoderUnionSimple xs =
+decoderUnionSimple name xs =
     let
         constructor (a,b) =
-            (tab 3 <| quote a ++ "->\n") ++ (tab 4 <| "Dec.succeed " ++ a)
+            (quote a ++ "->\n") ++ (tab 2 <| "Dec.succeed " ++ a)
     in
-        join "\n" <|
-            ["let", tab 1 "recover x =", tab 2 "case a of"] ++
-            (map constructor xs) ++
-            [tab 3 "other->", tab 4 "Dec.fail <| \"Invalid constructor field found: \" ++ other" ] ++
+        join "\n" <| map (tab 1) <|
+            ["let", tab 1 "recover x =", tab 2 "case x of"] ++
+            (map (tabLines 3) <| map constructor xs) ++
+            [tab 3 "other->", tab 4 "Dec.fail <| \"Unknown constructor for type "++name++": \" ++ other" ] ++
             ["in", tab 1 "Dec.string |> andThen recover"]
 
-decoderUnionUgly: List (String, List Type) -> String
---e.g. type A = B Int | C String
-decoderUnionUgly xs =
+decoderUnionComplex: String -> List (String, List Type) -> String
+decoderUnionComplex name xs =
     let
-        a = "b"
+        decodeConstructor (constructor, fields) =
+            quote constructor ++ "->\n" ++ (tabLines 1 <| decoderProduct (constructor, fields))
     in
         join "\n" <|
-            [ "let"
-            , tab 1 "recover xs ="
-            , tab 2 "case xs of"
-            , tab 3 "a0::bs->"
-            , tab 4 "case decodeValue Dec.string a0 of"
-            ] ++
-            ( map (tab 5) <| concat <| map unionCase xs) ++
-            [tab 5 "Ok other->", tab 6 "Dec.fail <| \"Invalid constructor field found: \" ++ other"] ++
-            [tab 5 "Err err->", tab 6 "Dec.fail err"] ++
-            [tab 3 "_->", tab 4 "Dec.fail \"Invalid JSON input: empty list\""] ++
-            ["in", tab 1 "Dec.list Dec.value |> andThen recover"]   
-
-unionCase: (String, List Type) -> List String
-unionCase (constructor, types) =
-    case types of
-        []->
-            [ "Ok " ++ quote constructor ++ "->"
-            , tab 1 <| "Dec.succeed " ++ constructor
+            [ tab 1 <| "Dec.field \"Constructor\" Dec.string |> andThen decode" ++ name ++ "Help" ++ "\n"
+            , "decode"++name++"Help constructor ="
+            , tab 1 "case constructor of"
+            ] ++ 
+            (map (tabLines 2) <| map decodeConstructor xs) ++
+            [ tab 2 "other->"
+            , tab 3 <| "Dec.fail <| \"Unknown constructor for type " ++ name ++": \" ++ other"
             ]
-        _->
-            [ "Ok " ++ quote constructor ++"->"
-            , tab 1 "case bs of"
-            ] ++
-            (map (tab 2) <| unionCaseHelp (constructor, types)) ++
-            [ tab 2 "_->"
-            , tab 3 <| "Dec.fail <| \"Invalid fields for constructor " ++ constructor ++ ": \" ++ toString bs"
-            ] 
-
-unionCaseHelp: (String, List Type) -> List String
-unionCaseHelp (constructor, types) =
-    let
-        caseString = (join "::" vars) ++ "::cs ->"
-        okList = join " " <| map varOk vars
-        recursionBase = toTuples vars types
-        toTuples xs ys = List.map2 (\x y -> (x,y)) xs ys
-        vars = map var <| range 1 (List.length types)
-    in
-        caseString :: map (tab 2) (unionCaseRecursion constructor okList recursionBase)
-
-unionCaseRecursion: String -> String -> List (String, Type) -> List String
-unionCaseRecursion constructor okList xs =
-    let
-        recurseOn ys =
-            case ys of
-                []->
-                    ["Dec.succeed <| "++constructor++" "++ okList]
-                _->
-                    unionCaseRecursion constructor okList ys
-    in
-        case xs of
-            []->
-                []
-            (var,currType)::ys->
-                [ "case decodeValue " ++ (bracketIfSpaced <| decoderHelp False "" currType) ++ " " ++ var ++ " of"
-                , tab 1 <| "Ok " ++ (varOk var) ++"->"
-                ] ++
-                (map (tab 2) <| recurseOn ys) ++
-                [ tab 1 <| "Err err->"
-                , tab 2 <| "Dec.fail err"
-                ]   
 
 var: Int -> String
 var n = "a" ++ toString n

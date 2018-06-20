@@ -30,3 +30,27 @@ type alias TypeDef = {
     , theType: Type  
     }
 
+simpleType this =
+    case this of
+        TypeBool->
+            True
+        TypeFloat->
+            True
+        TypeInt->
+            True
+        TypeString->
+            True
+        _->
+            False
+
+coreType this =
+    case this of
+        TypeArray a->
+            simpleType a
+        TypeList a->
+            simpleType a
+        TypeMaybe a->
+            simpleType a
+        _->
+            simpleType this
+
