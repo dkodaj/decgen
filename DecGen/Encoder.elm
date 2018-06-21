@@ -165,8 +165,13 @@ encoderProduct addConstructor (constructor, subTypes) =
                         []
                     True->
                         ["(\"Constructor\", Enc.string " ++ quote constructor ++")"]
+        justString = (not addConstructor) && (subTypes == [])
     in
-        join "\n" <|
+        case justString of
+            True->
+                "Enc.string " ++ quote constructor
+            False->
+                join "\n" <|
                     ["object"] ++
                     (map (tab 1) <| bracketCommas <| constrEncode ++ map fieldEncode fieldDefs) ++
                     [ tab 1 "]"]
