@@ -166,11 +166,7 @@ encoderProduct addConstructor (constructor, subTypes) =
                     True->
                         ["(\"Constructor\", Enc.string " ++ quote constructor ++")"]
     in
-        case subTypes of
-            []->
-                "Enc.string " ++ quote constructor
-            _->
-                join "\n" <|
+        join "\n" <|
                     ["object"] ++
                     (map (tab 1) <| bracketCommas <| constrEncode ++ map fieldEncode fieldDefs) ++
                     [ tab 1 "]"]
