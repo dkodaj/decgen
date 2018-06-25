@@ -41,17 +41,11 @@ grabTypeDefs txt =
 
 grabRawType: List (Maybe String) -> Maybe RawType
 grabRawType submatches =
-    let
-        toBool a =
-            case a of
-                Just _-> True
-                Nothing-> False
-    in
-        case submatches of
-            Just a:: Just b ::cs->
-                Just { name = trim a, def = trim <| singleLine b }
-            _->
-                Nothing
+    case submatches of
+        Just a:: Just b ::cs->
+            Just { name = trim a, def = trim <| singleLine b }
+        _->
+            Nothing
 
 grabRawTypes: String -> List RawType
 grabRawTypes txt =
