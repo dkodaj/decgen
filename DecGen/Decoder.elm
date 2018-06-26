@@ -64,7 +64,7 @@ decoderHelp topLevel name a =
             TypeProduct b->
                 case topLevel of
                     True->
-                        decoderProduct b
+                        decoderProduct True b
                     False->
                         case name of
                             ""->
@@ -115,32 +115,29 @@ decoderHelp topLevel name a =
                             _->
                                 "decode" ++ name
 
-decoderProduct: (String, List Type) -> String
-decoderProduct (constructor, subTypes) =
+decoderProduct: Bool -> (String, List Type) -> String
+decoderProduct productType (constructor, subTypes) =
     let
         fieldDecode (a,b) = "|> required " ++ (quote <| capitalize a) ++ " " ++ (subDecoder b)
         fieldDefs = map2 (\a b->(a,b)) vars subTypes
         subDecoder a = bracketIfSpaced <| decoderHelp False "" a
         vars = map var <| range 1 (length subTypes)
-        subEncoder a = 
-            let
-                fullDecoder = decoderHelp True "" a
-            in
-                case coreType a of
-                    True->
-                        bracketIfSpaced <| fullDecoder
-                    False->
-                        bracketIfSpaced <| decoderHelp False "" a   
+        simpleDecoder x = "Dec.map " ++ constructor ++ " " ++ (subDecoder x)
+        complexDecoder = 
+            join "\n" <|
+                [ "decode"
+                , tab 1 constructor
+                ] ++
+                (map (tab 2) <| map fieldDecode fieldDefs)
     in
          case subTypes of
             []->
                 "Dec.succeed " ++ constructor
+            x::[]->
+                if productType then simpleDecoder x else complexDecoder
             _->
-                join "\n" <|
-                    [ "decode"
-                    , tab 1 constructor
-                    ] ++
-                    (map (tab 2) <| map fieldDecode fieldDefs)
+                complexDecoder
+
 
 decoderRecord: String -> List Field -> String
 decoderRecord name xs =
@@ -183,7 +180,7 @@ decoderUnionComplex: String -> List (String, List Type) -> String
 decoderUnionComplex name xs =
     let
         decodeConstructor (constructor, fields) =
-            quote constructor ++  " ->\n" ++ (tabLines 1 <| decoderProduct (constructor, fields))
+            quote constructor ++  " ->\n" ++ (tabLines 1 <| decoderProduct False (constructor, fields))
     in
         join "\n" <|
             [ tab 1 <| "Dec.field \"Constructor\" Dec.string |> andThen decode" ++ name ++ "Help" ++ "\n"

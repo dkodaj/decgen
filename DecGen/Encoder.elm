@@ -78,7 +78,7 @@ encoderHelp topLevel name a =
             TypeProduct b->
                 case topLevel of
                     True->
-                        encoderProduct False b
+                        encoderProduct True False b
                     False->
                         case name of
                             ""->
@@ -144,8 +144,8 @@ encoderMaybe x =
         , tab 2 "Enc.null" 
         ]
 
-encoderProduct: Bool -> (String, List Type) -> String
-encoderProduct addConstructor (constructor, subTypes) =
+encoderProduct: Bool -> Bool -> (String, List Type) -> String
+encoderProduct productType addConstructor (constructor, subTypes) =
     let
         fieldDefs = map2 (\a b -> (a,b)) vars subTypes
         fieldEncode (a,b) = "(" ++ (quote <| capitalize a) ++ ", " ++ (subEncoder b) ++ " " ++ a ++ ")"
@@ -165,16 +165,28 @@ encoderProduct addConstructor (constructor, subTypes) =
                         []
                     True->
                         ["(\"Constructor\", Enc.string " ++ quote constructor ++")"]
-        justString = (not addConstructor) && (subTypes == [])
+        defaultEncoder = 
+            join "\n" <|
+                ["object"] ++
+                (map (tab 1) <| bracketCommas <| constrEncode ++ map fieldEncode fieldDefs) ++
+                [ tab 1 "]"] 
     in
-        case justString of
-            True->
-                "Enc.string " ++ quote constructor
-            False->
-                join "\n" <|
-                    ["object"] ++
-                    (map (tab 1) <| bracketCommas <| constrEncode ++ map fieldEncode fieldDefs) ++
-                    [ tab 1 "]"]
+        case subTypes of
+            []->
+                case addConstructor of
+                    True->
+                        defaultEncoder
+                    False->
+                        "Enc.string " ++ quote constructor
+            x::[]->
+                case productType of
+                    True->
+                        subEncoder x  ++ " a1"
+                    False->
+                        defaultEncoder
+            _->
+                defaultEncoder
+                
 
 encoderRecord: List Field -> String
 encoderRecord xs =
@@ -225,7 +237,7 @@ encoderUnionComplex xs =
     let
         varList ys = join " " <| map var <| range 1 (length ys)
         encodeConstructor (a, ys) =
-            tab 1 (a ++ " " ++ varList ys ++ "->" ++ "\n") ++ tabLines 2 (encoderProduct True (a,ys))
+            tab 1 (a ++ " " ++ varList ys ++ "->" ++ "\n") ++ tabLines 2 (encoderProduct False True (a,ys))
     in
         join "\n" <|
             ["case a of"] ++
