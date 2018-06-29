@@ -23,8 +23,16 @@ anonymousTypes: List TypeDef -> List TypeDef
 anonymousTypes typeList =
     map anonymousType <| grabAnonymousTypes typeList
 
-extractAll: String -> ( List TypeDef, List (List String) )
+extractAll: String -> List TypeDef
 extractAll txt =
+    let
+        declared = grabTypeDefs txt
+        anonymous = anonymousTypes declared
+    in
+        declared ++ anonymous
+
+extractAllWithDefs: String -> ( List TypeDef, List (List String) )
+extractAllWithDefs txt =
     let
         declared = grabTypeDefs txt
         anonymous = anonymousTypes declared

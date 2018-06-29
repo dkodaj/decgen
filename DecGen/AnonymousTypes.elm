@@ -42,7 +42,11 @@ anonymousHelp topLevel a xs =
         TypeList b->
             anonymousHelp False b xs
         TypeMaybe b->
-            anonymousHelp False b xs
+            case topLevel of
+                True->
+                    anonymousHelp False b xs
+                False->
+                    (TypeMaybe b)::xs
         TypeOpaque b->
             xs
         TypeProduct (b,c)->

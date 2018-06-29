@@ -9,12 +9,10 @@ import String exposing (contains, join)
 both: String -> String
 both txt =
     let
-        (allTypes, anonymousDefs) = extractAll txt
+        allTypes = extractAll txt
         sortedTypes = sortBy .name allTypes
     in
         stringify <|
-            (anonymousDefs)
-            ++
             (map decoder <| sortedTypes )
             ++
             (map encoder <| sortedTypes )
@@ -22,21 +20,17 @@ both txt =
 decoders: String -> String
 decoders txt =
     let
-        (allTypes, anonymousDefs) = extractAll txt
+        allTypes = extractAll txt
     in
         stringify <|
-            (anonymousDefs)
-            ++
             (map decoder <| sortBy .name allTypes )
 
 encoders: String -> String
 encoders txt =
     let
-        (allTypes, anonymousDefs) = extractAll txt
+        allTypes = extractAll txt
     in
         stringify <|
-            (anonymousDefs)
-            ++
             (map encoder <| sortBy .name allTypes )
 
 imports output =

@@ -2,7 +2,7 @@ module DecGen.Encoder exposing (encoder)
 
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
-import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
+import DecGen.Types exposing (coreTypeForEncoding, Field, Type(..), TypeDef)
 import List exposing (filter, length, map, map2, range)
 import String exposing (contains, dropRight, join, split)
 
@@ -154,7 +154,7 @@ encoderProduct productType addConstructor (constructor, subTypes) =
             let
                 fullEncoder = dropRight 2 <| encoderHelp True "" a
             in
-                case coreType a of
+                case coreTypeForEncoding a of
                     True->
                         fullEncoder
                     False->

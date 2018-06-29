@@ -54,3 +54,9 @@ coreType this =
         _->
             simpleType this
 
+coreTypeForEncoding this =
+    case this of
+        TypeMaybe _->
+            False
+        _->
+            coreType this
