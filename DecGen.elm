@@ -8,19 +8,12 @@ import String exposing (contains, join)
 
 both: String -> String
 both txt =
-    let
-        allTypes = extractAll txt
-        sortedTypes = sortBy .name allTypes
-    in
-        stringify <|
-            (map decoder <| sortedTypes )
-            ++
-            (map encoder <| sortedTypes )
+    (decoders txt) ++ "\n\n" ++ (encoders txt)
 
 decoders: String -> String
 decoders txt =
     let
-        allTypes = extractAll txt
+        allTypes = extractAll False txt
     in
         stringify <|
             (map decoder <| sortBy .name allTypes )
@@ -28,7 +21,7 @@ decoders txt =
 encoders: String -> String
 encoders txt =
     let
-        allTypes = extractAll txt
+        allTypes = extractAll True txt
     in
         stringify <|
             (map encoder <| sortBy .name allTypes )

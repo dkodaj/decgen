@@ -1,7 +1,7 @@
 module DecGen.AnonymousTypes exposing (grabAnonymousTypes)
 
-import DecGen.Types exposing (Type(..), TypeDef)
-import List exposing (any, concat, foldr, map)
+import DecGen.Types exposing (coreType, coreTypeForEncoding, Type(..), TypeDef)
+import List exposing (any, concat, filter, foldr, map)
 
 --== Find anonymous types ==--
 
@@ -81,9 +81,17 @@ anonymousHelp topLevel a xs =
             in
                 ( foldr (<<) identity <| map (anonymousHelp False) typeList ) xs
 
-grabAnonymousTypes: List TypeDef -> List Type
-grabAnonymousTypes typeDefs =
-    unique <| concat <| map anonymous typeDefs
+grabAnonymousTypes: Bool -> List TypeDef -> List Type
+grabAnonymousTypes encoding typeDefs =
+    let
+        core =
+            case encoding of
+                True->
+                    coreTypeForEncoding
+                False->
+                    coreType
+    in
+        filter (not << core) <| unique <| concat <| map anonymous typeDefs
 
 unique: List a -> List a
 unique xs =

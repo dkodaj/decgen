@@ -19,23 +19,23 @@ anonymousType: Type -> TypeDef
 anonymousType a =
     { name = typeNick a, theType = a }
 
-anonymousTypes: List TypeDef -> List TypeDef
-anonymousTypes typeList =
-    map anonymousType <| grabAnonymousTypes typeList
+anonymousTypes: Bool -> List TypeDef -> List TypeDef
+anonymousTypes encoding typeList =
+    map anonymousType <| grabAnonymousTypes encoding typeList
 
-extractAll: String -> List TypeDef
-extractAll txt =
+extractAll: Bool ->String -> List TypeDef
+extractAll encoding txt =
     let
         declared = grabTypeDefs txt
-        anonymous = anonymousTypes declared
+        anonymous = anonymousTypes encoding declared
     in
         declared ++ anonymous
 
-extractAllWithDefs: String -> ( List TypeDef, List (List String) )
-extractAllWithDefs txt =
+extractAllWithDefs: Bool -> String -> ( List TypeDef, List (List String) )
+extractAllWithDefs encoding txt =
     let
         declared = grabTypeDefs txt
-        anonymous = anonymousTypes declared
+        anonymous = anonymousTypes encoding declared
     in
         (declared ++ anonymous, aliasDefs anonymous)
 
