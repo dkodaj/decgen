@@ -1,6 +1,6 @@
 module DecGen.Destructuring exposing (..)
 
-import List exposing (concat, map)
+import List exposing (concat, map, map2)
 import Regex exposing (HowMany(..), regex, replace)
 import String exposing (dropLeft, dropRight, indices, join, left, length, repeat, right, split, toUpper, trim, words)
 
@@ -50,25 +50,32 @@ toField def =
         []->
             Nothing
 
-detuple: String -> Maybe (String,String)
+detuple: String -> List String
 detuple txt =
     case inBrackets txt of
         Nothing->
-            Nothing
+            []
         Just x->
-            detupleHelp (indices "," x) x
+            detupleHelp (indices "," x) x []
 
-detupleHelp: List Int -> String -> Maybe (String, String)
-detupleHelp idxs txt =
+detupleHelp: List Int -> String -> List String -> List String
+detupleHelp idxs txt elements =
     case idxs of
         []->
-            Nothing
+            case elements of
+                []->
+                    []
+                x::xs->
+                    elements ++ [txt]
         x::xs->
             case outsideBrackets x txt && outsideCurly x txt of
                 True->
-                    Just (left x txt, dropLeft (x+1) txt)
+                    let
+                        newTxt = dropLeft (x+1) txt
+                    in
+                        detupleHelp (indices "," newTxt) newTxt (elements ++ [left x txt]) 
                 False->
-                    detupleHelp xs txt
+                    detupleHelp xs txt elements
 
 deunion: String -> List (String, List String)
 deunion txt =
@@ -83,10 +90,20 @@ deunionHelp txt =
             Nothing
 
 
---== Parse helpers ==--
+--== Parse/Write helpers ==--
 
 bracket txt =
     "(" ++ txt ++ ")"
+
+
+bracketCommas: List String -> List String
+bracketCommas xs = 
+--bracketCommas ("a","b") == "[ a, b"
+    let
+        glue a b = a ++ " " ++ b
+        separators = "[" :: List.repeat (List.length xs - 1) ","
+    in
+        map2 glue separators xs
 
 bracketIfSpaced txt =
     case indices " " txt of

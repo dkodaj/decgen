@@ -5,15 +5,8 @@ import DecGen.Destructuring exposing (bracketIfSpaced, civilize, clean, debracke
 import DecGen.Types exposing (Field, RawType, Type(..), TypeDef)
 import List exposing (map)
 import Regex exposing (find, HowMany(..), Match, regex)
-import String exposing (dropRight, trim, words)
+import String exposing (dropRight, join, trim, words)
 
-
-aliasDefs: List TypeDef -> List (List String)
-aliasDefs types =
-    let
-        def a = ["type alias " ++ a.name ++ " = " ++ (typeDescr True a.theType)]
-    in
-        map def types    
 
 anonymousType: Type -> TypeDef
 anonymousType a =
@@ -30,14 +23,6 @@ extractAll encoding txt =
         anonymous = anonymousTypes encoding declared
     in
         declared ++ anonymous
-
-extractAllWithDefs: Bool -> String -> ( List TypeDef, List (List String) )
-extractAllWithDefs encoding txt =
-    let
-        declared = grabTypeDefs txt
-        anonymous = anonymousTypes encoding declared
-    in
-        (declared ++ anonymous, aliasDefs anonymous)
 
 grabTypeDefs: String -> List TypeDef
 grabTypeDefs txt =
@@ -78,9 +63,9 @@ typeOf maybeUnion def  =
         subType a = typeOf False a
     in
         case detuple def of
-            Just (a,b)->
-                TypeTuple (subType a, subType b)
-            Nothing->
+            x::xs->
+                TypeTuple <| map subType (x::xs)
+            []->
                 case derecord def of
                     x::xs->
                         let
@@ -182,8 +167,8 @@ typeDescr bracketIt a =
                     "{" ++ fields ++ "}"
             TypeString->
                 "String"
-            TypeTuple (b,c)->
-                "(" ++ typeDescr False b ++ "," ++ typeDescr False c ++ ")"
+            TypeTuple bs->
+                "(" ++ (join ", " <| map (typeDescr False) bs) ++ ")"
             TypeUnion b->
                 let
                     constructorString (x,y) =

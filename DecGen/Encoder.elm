@@ -1,9 +1,9 @@
 module DecGen.Encoder exposing (encoder)
 
-import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
+import DecGen.Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
 import DecGen.Types exposing (coreTypeForEncoding, Field, Type(..), TypeDef)
-import List exposing (filter, length, map, map2, range)
+import List exposing (filter, indexedMap, length, map, map2, range)
 import String exposing (contains, dropRight, join, split)
 
 encoder: TypeDef -> List String
@@ -12,20 +12,20 @@ encoder typeDef =
         encoderBody = map (tab 1) <| split "\n" <| encoderHelp True typeDef.name typeDef.theType
         encoderName = 
             case typeDef.theType of
-                TypeTuple _->
-                    "encode" ++ typeDef.name ++ " (a,b) ="
+                TypeTuple xs->
+                    "encode" ++ typeDef.name ++ " ("++varListComma xs++") ="
                 TypeProduct (b,c)->
                     case c of
                         []->
                             "encode" ++ typeDef.name ++ " a ="
                         _->
-                            let
-                                vars = map var <| range 1 (length c)
-                                varList = join " " vars
-                            in
-                                "encode" ++ typeDef.name ++ " ("++ b++" "++varList ++") ="
+                            "encode" ++ typeDef.name ++ " ("++ b++" "++varList c ++") ="
                 _->
                    "encode" ++ typeDef.name ++ " a =" 
+        
+        vars a = map var <| range 1 (length a)
+        varList a = join " " (vars a)
+        varListComma a = join ", " (vars a)
     in
         encoderName :: encoderBody
 
@@ -98,10 +98,10 @@ encoderHelp topLevel name a =
             TypeString->
                 maybeAppend <| "Enc.string"
             
-            TypeTuple (b,c)->
+            TypeTuple bs->
                 case topLevel of
                     True->
-                        encoderTuple (b,c)
+                        encoderTuple bs
                     False->
                         case name of
                             ""->
@@ -126,10 +126,10 @@ encoderDict name (b,c) =
     in
         join "\n" <|
             [ "let"
-            , tab 1 <| subEncoderName ++ " (b,c) ="
+            , tab 1 <| subEncoderName ++ " (a1,a2) ="
             , tab 2 "object"
-            , tab 3 <| "[ (\"First\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " b)" 
-            , tab 3 <| ", (\"Second\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " c) ]" 
+            , tab 3 <| "[ (\"A1\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " a1)" 
+            , tab 3 <| ", (\"A2\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " a2) ]" 
             , "in"
             , tab 1 <| "(Enc.list << List.map " ++ subEncoderName ++ ") (Dict.toList a)"
             ]
@@ -199,22 +199,16 @@ encoderRecord xs =
             (map (tab 1) <| bracketCommas <| map fieldEncode xs) ++
             [ tab 1 "]"]
 
-bracketCommas: List String -> List String
-bracketCommas xs = 
+encoderTuple: List Type -> String
+encoderTuple xs =
     let
-        glue a b = a ++ " " ++ b
-        separators = "[" :: List.repeat (List.length xs - 1) ","
+        encodeElement (idx,elem) =
+          "(\"" ++ varUpper (idx+1) ++ "\", " ++ (bracketIfSpaced <| encoderHelp False "" elem) ++ " " ++ var (idx+1) ++ ")"
     in
-        map2 glue separators xs
-
-encoderTuple: (Type, Type) -> String
-encoderTuple (a,b) =
     join "\n" <|
-        [ "object"
-        , tab 1 <| "[ (\"First\", " ++ (bracketIfSpaced <| encoderHelp False "" a) ++ " a)" 
-        , tab 1 <| ", (\"Second\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " b)" 
-        , tab 1 "]"
-        ]
+        [ "object" ] ++
+        (map (tab 1) <| bracketCommas <| map encodeElement <| indexedMap (,) xs) ++
+        [ tab 1 "]"]
 
 encoderUnion: List (String, List Type) -> String
 encoderUnion xs =
@@ -244,3 +238,5 @@ encoderUnionComplex xs =
             ( map encodeConstructor xs )
 
 var n = "a" ++ toString n
+
+varUpper n = "A" ++ toString n

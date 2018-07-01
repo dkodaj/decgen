@@ -12,7 +12,7 @@ type Type =
     | TypeProduct (String, List Type)
     | TypeRecord (List Field)
     | TypeString
-    | TypeTuple (Type, Type)
+    | TypeTuple (List Type)
     | TypeUnion ( List (String, List Type) )
 
 type alias Field = { 

@@ -66,9 +66,9 @@ anonymousHelp topLevel a xs =
                         recurseOn (a::xs)
         TypeString->
             xs
-        TypeTuple (b,c)->
+        TypeTuple bs->
             let
-                recurseOn = anonymousHelp False b << anonymousHelp False c
+                recurseOn = foldr (<<) identity <| map (anonymousHelp False) bs
             in
                 case topLevel of
                     True->

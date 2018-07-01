@@ -3,7 +3,7 @@ module DecGen.Decoder exposing (decoder)
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
 import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
-import List exposing (concat, filter, length, map, map2, range)
+import List exposing (concat, filter, indexedMap, length, map, map2, range)
 import String exposing (join, split)
 
 decoder: TypeDef -> List String
@@ -36,7 +36,7 @@ decoderHelp topLevel name a =
                     True->
                         let
                             subDecoderName = "decode"++name++"Tuple"
-                            subDecoder = decoderHelp True "" (TypeTuple (b,c))
+                            subDecoder = decoderHelp True "" (TypeTuple [b,c])
                         in
                             join "\n" [
                               "let"
@@ -88,16 +88,10 @@ decoderHelp topLevel name a =
             TypeString->
                 "Dec.string"
             
-            TypeTuple (b,c)->
+            TypeTuple bs->
                 case topLevel of
                     True->
-                        let
-                            subDecoder x = bracketIfSpaced <| decoderHelp False "" x
-                        in
-                            "decode" ++ "\n" ++
-                            (tab 1 "(\\x y -> (x,y))") ++ "\n" ++
-                            (tab 2 <| "|> required ") ++ (quote "First") ++ " " ++ (subDecoder b) ++ "\n" ++
-                            (tab 2 <| "|> required ") ++ (quote "Second") ++ " " ++ (subDecoder c)
+                        decoderTuple bs
                     False->
                         case name of
                             ""->
@@ -138,7 +132,6 @@ decoderProduct productType (constructor, subTypes) =
             _->
                 complexDecoder
 
-
 decoderRecord: String -> List Field -> String
 decoderRecord name xs =
     let
@@ -150,6 +143,20 @@ decoderRecord name xs =
             , tab 1 name
             ] ++
             (map (tab 2) <| map fieldDecode xs)
+
+decoderTuple: List Type -> String
+decoderTuple xs =
+    let
+        component (idx,elem) = tab 2 <| "|> required " ++ (quote <| varUpper <| idx+1) ++ " " ++ (subDecoder elem)
+        mapper = "(\\"++varList ++ " -> "++varListComma ++ ")"
+        subDecoder x = bracketIfSpaced <| decoderHelp False "" x
+        vars = map var <| range 1 (length xs)
+        varList = join " " vars
+        varListComma = "(" ++ join ", " vars ++ ")"
+    in
+        "decode" ++ "\n" ++
+        (tab 1 mapper) ++ "\n" ++
+        (join "\n" <| map component <| indexedMap (,) xs)
 
 decoderUnion: String -> List (String, List Type) -> String
 decoderUnion name xs =
@@ -197,3 +204,5 @@ var n = "a" ++ toString n
 
 varOk: String -> String
 varOk a = a++"_"
+
+varUpper n = "A" ++ toString n
