@@ -191,7 +191,7 @@ encoderProduct productType addConstructor (constructor, subTypes) =
 encoderRecord: List Field -> String
 encoderRecord xs =
     let
-        fieldEncode x = "(" ++ (quote <| capitalize x.name) ++ ", " ++ (subEncoder x.fieldType) ++ " a." ++ x.name ++ ")"
+        fieldEncode x = "(" ++ (quote x.name) ++ ", " ++ (subEncoder x.fieldType) ++ " a." ++ x.name ++ ")"
         subEncoder x = bracketIfSpaced <| encoderHelp False "" x
     in
         join "\n" <|

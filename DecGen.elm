@@ -35,7 +35,7 @@ imports output =
                 False->
                     []
         importDict = maybe "import Dict exposing (Dict)" "Dict."
-        importDec = maybe "import Json.Decode as Dec exposing (andThen, decodeValue)" " Dec."
+        importDec = maybe "import Json.Decode as Dec exposing (andThen)" " Dec."
         importDecPipe = maybe "import Json.Decode.Pipeline exposing (decode, required)" "|> required" 
         importEnc = maybe "import Json.Encode as Enc exposing (object)" " Enc."
         importList = maybe "import List" " List."

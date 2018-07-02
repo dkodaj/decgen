@@ -135,7 +135,7 @@ decoderProduct productType (constructor, subTypes) =
 decoderRecord: String -> List Field -> String
 decoderRecord name xs =
     let
-        fieldDecode x = "|> required " ++ (quote <| capitalize x.name) ++ " " ++ (subDecoder x.fieldType)
+        fieldDecode x = "|> required " ++ (quote x.name) ++ " " ++ (subDecoder x.fieldType)
         subDecoder x = bracketIfSpaced <| decoderHelp False "" x
     in
         join "\n" <|
