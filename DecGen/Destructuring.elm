@@ -136,7 +136,9 @@ clean xs =
         concat <| map dropJust xs
 
 components: String -> List String 
-components txt = --helper for Destructuring.deunion
+components txt = 
+    --helper for Destructuring.deunion
+    --components "A String | B Float | C (Maybe Float)" == ["A String", "B Int", "C (Maybe Float)"] 
     componentsHelp (indices " " txt) 0 txt
 
 componentsHelp idxs start txt =
@@ -214,6 +216,10 @@ singleLine txt =
 
 singleSpace txt = 
     replace All (regex "[ ]+") (\_ -> " ") txt
+
+stringify: List (List String) -> String
+stringify xs =
+    join "\n\n" <| map (join "\n") xs
 
 tab n txt =
     (repeat (3*n) " ") ++ txt

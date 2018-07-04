@@ -1,4 +1,4 @@
-module DecGen.Decoder exposing (decoder)
+module DecGen.Decoder exposing (decoder, decoderCapitalize)
 
 import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
@@ -6,8 +6,12 @@ import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
 import List exposing (concat, filter, indexedMap, length, map, map2, range)
 import String exposing (join, split)
 
-decoder: TypeDef -> List String
-decoder typeDef =
+decoder = decoderBase False
+
+decoderCapitalize = decoderBase True
+
+decoderBase: Bool -> TypeDef -> List String
+decoderBase capitalFields typeDef =
     let
         decoderBody = 
             case typeDef.theType of
@@ -15,16 +19,16 @@ decoder typeDef =
                     decoderBodyRaw
                 _->
                     map (tab 1) decoderBodyRaw
-        decoderBodyRaw = split "\n" <| decoderHelp True typeDef.name typeDef.theType
+        decoderBodyRaw = split "\n" <| decoderHelp capitalFields True typeDef.name typeDef.theType
         decoderName = "decode" ++ typeDef.name ++ " ="
     in
         decoderName :: decoderBody
 
-decoderHelp: Bool-> String -> Type-> String
-decoderHelp topLevel name a =
+decoderHelp: Bool -> Bool-> String -> Type-> String
+decoderHelp capitalFields topLevel name a =
     let
         recurseOn x y =
-            x ++ " " ++ ( bracketIfSpaced <| decoderHelp False "" y )
+            x ++ " " ++ ( bracketIfSpaced <| decoderHelp False False "" y )
     in
         case a of
             TypeArray b->
@@ -36,7 +40,7 @@ decoderHelp topLevel name a =
                     True->
                         let
                             subDecoderName = "decode"++name++"Tuple"
-                            subDecoder = decoderHelp True "" (TypeTuple [b,c])
+                            subDecoder = decoderHelp False True "" (TypeTuple [b,c])
                         in
                             join "\n" [
                               "let"
@@ -76,9 +80,9 @@ decoderHelp topLevel name a =
                     True->
                         case name of
                             ""->
-                                decoderRecord (typeNick a) b
+                                decoderRecord capitalFields (typeNick a) b
                             _->
-                                decoderRecord name b                        
+                                decoderRecord capitalFields name b                        
                     False->
                         case name of
                             ""->
@@ -114,7 +118,7 @@ decoderProduct productType (constructor, subTypes) =
     let
         fieldDecode (a,b) = "|> required " ++ (quote <| capitalize a) ++ " " ++ (subDecoder b)
         fieldDefs = map2 (\a b->(a,b)) vars subTypes
-        subDecoder a = bracketIfSpaced <| decoderHelp False "" a
+        subDecoder a = bracketIfSpaced <| decoderHelp False False "" a
         vars = map var <| range 1 (length subTypes)
         simpleDecoder x = "Dec.map " ++ constructor ++ " " ++ (subDecoder x)
         complexDecoder = 
@@ -132,11 +136,17 @@ decoderProduct productType (constructor, subTypes) =
             _->
                 complexDecoder
 
-decoderRecord: String -> List Field -> String
-decoderRecord name xs =
+decoderRecord: Bool -> String -> List Field -> String
+decoderRecord capitalFields name xs =
     let
-        fieldDecode x = "|> required " ++ (quote x.name) ++ " " ++ (subDecoder x.fieldType)
-        subDecoder x = bracketIfSpaced <| decoderHelp False "" x
+        fieldDecode x = "|> required " ++ (fieldName x) ++ " " ++ (subDecoder x.fieldType)
+        subDecoder x = bracketIfSpaced <| decoderHelp False False "" x
+        fieldName x = 
+            case capitalFields of
+                True->
+                    quote <| capitalize x.name
+                False->
+                    quote x.name
     in
         join "\n" <|
             [ "decode"
@@ -149,7 +159,7 @@ decoderTuple xs =
     let
         component (idx,elem) = tab 2 <| "|> required " ++ (quote <| varUpper <| idx+1) ++ " " ++ (subDecoder elem)
         mapper = "(\\"++varList ++ " -> "++varListComma ++ ")"
-        subDecoder x = bracketIfSpaced <| decoderHelp False "" x
+        subDecoder x = bracketIfSpaced <| decoderHelp False False "" x
         vars = map var <| range 1 (length xs)
         varList = join " " vars
         varListComma = "(" ++ join ", " vars ++ ")"

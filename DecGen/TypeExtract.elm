@@ -1,4 +1,8 @@
-module DecGen.TypeExtract exposing (extractAll, grabRawTypes, grabTypeDefs, typeNick)
+module DecGen.TypeExtract exposing (
+      extractAll
+    , grabRawTypes
+    , grabTypeDefs
+    , typeNick)
 
 import DecGen.AnonymousTypes exposing (grabAnonymousTypes)
 import DecGen.Destructuring exposing (bracketIfSpaced, civilize, clean, debracket, decomment, derecord, detuple, deunion, dropWord, removeColons, removeStringLiterals, singleLine)
@@ -57,7 +61,7 @@ typeOf maybeUnion def  =
 --  typeOf True "List String" == TypeList TypeString
 --  typeOf False "List String" == TypeList TypeString
 --  typeOf True "MyType | String" == TypeUnion [TypeOpaque "MyType", TypeString]
---  typeOf True "MyType" == TypeUnion [TypeOpaque "MyType"]
+--  typeOf True "MyType" == TypeProduct [TypeOpaque "MyType"]
 --  typeOf False "MyType" == TypeOpaque "MyType"
     let
         subType a = typeOf False a

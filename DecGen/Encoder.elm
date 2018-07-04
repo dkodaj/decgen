@@ -1,4 +1,4 @@
-module DecGen.Encoder exposing (encoder)
+module DecGen.Encoder exposing (encoder, encoderCapitalize)
 
 import DecGen.Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
@@ -6,10 +6,14 @@ import DecGen.Types exposing (coreTypeForEncoding, Field, Type(..), TypeDef)
 import List exposing (filter, indexedMap, length, map, map2, range)
 import String exposing (contains, dropRight, join, split)
 
-encoder: TypeDef -> List String
-encoder typeDef =
+encoder = encoderBase False
+
+encoderCapitalize = encoderBase True
+
+encoderBase: Bool -> TypeDef -> List String
+encoderBase capitalFields typeDef =
     let
-        encoderBody = map (tab 1) <| split "\n" <| encoderHelp True typeDef.name typeDef.theType
+        encoderBody = map (tab 1) <| split "\n" <| encoderHelp capitalFields True typeDef.name typeDef.theType
         encoderName = 
             case typeDef.theType of
                 TypeTuple xs->
@@ -29,8 +33,8 @@ encoder typeDef =
     in
         encoderName :: encoderBody
 
-encoderHelp: Bool-> String -> Type-> String
-encoderHelp topLevel name a =
+encoderHelp: Bool -> Bool-> String -> Type-> String
+encoderHelp capitalFields topLevel name a =
     let
         maybeAppend txt =
             case topLevel of
@@ -39,7 +43,7 @@ encoderHelp topLevel name a =
                 False->
                     txt
         recurseOn x y z =
-            x ++ " << (" ++ y ++ " " ++ ( bracketIfSpaced <| encoderHelp False "" z ) ++ ")"
+            x ++ " << (" ++ y ++ " " ++ ( bracketIfSpaced <| encoderHelp False False "" z ) ++ ")"
     in
         case a of            
             TypeArray b->
@@ -88,7 +92,7 @@ encoderHelp topLevel name a =
             TypeRecord b->
                 case topLevel of
                     True->
-                        encoderRecord b                        
+                        encoderRecord capitalFields b                        
                     False->
                         case name of
                             ""->
@@ -128,8 +132,8 @@ encoderDict name (b,c) =
             [ "let"
             , tab 1 <| subEncoderName ++ " (a1,a2) ="
             , tab 2 "object"
-            , tab 3 <| "[ (\"A1\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " a1)" 
-            , tab 3 <| ", (\"A2\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " a2) ]" 
+            , tab 3 <| "[ (\"A1\", " ++ (bracketIfSpaced <| encoderHelp False False "" b) ++ " a1)" 
+            , tab 3 <| ", (\"A2\", " ++ (bracketIfSpaced <| encoderHelp False False "" c) ++ " a2) ]" 
             , "in"
             , tab 1 <| "(Enc.list << List.map " ++ subEncoderName ++ ") (Dict.toList a)"
             ]
@@ -139,7 +143,7 @@ encoderMaybe x =
     join "\n" <|
         [ "case a of"
         , tab 1 "Just b->"
-        , tab 2 <| encoderHelp False "" x ++ " b"
+        , tab 2 <| encoderHelp False False "" x ++ " b"
         , tab 1 "Nothing->"
         , tab 2 "Enc.null" 
         ]
@@ -152,13 +156,13 @@ encoderProduct productType addConstructor (constructor, subTypes) =
         vars = map var <| range 1 (length subTypes)
         subEncoder a = 
             let
-                fullEncoder = dropRight 2 <| encoderHelp True "" a
+                fullEncoder = dropRight 2 <| encoderHelp False True "" a
             in
                 case coreTypeForEncoding a of
                     True->
                         fullEncoder
                     False->
-                        bracketIfSpaced <| encoderHelp False "" a                        
+                        bracketIfSpaced <| encoderHelp False False "" a                        
         constrEncode =
                 case addConstructor of
                     False->
@@ -188,11 +192,17 @@ encoderProduct productType addConstructor (constructor, subTypes) =
                 defaultEncoder
                 
 
-encoderRecord: List Field -> String
-encoderRecord xs =
+encoderRecord: Bool -> List Field -> String
+encoderRecord capitalFields xs =
     let
-        fieldEncode x = "(" ++ (quote x.name) ++ ", " ++ (subEncoder x.fieldType) ++ " a." ++ x.name ++ ")"
-        subEncoder x = bracketIfSpaced <| encoderHelp False "" x
+        fieldEncode x = "(" ++ (fieldName x) ++ ", " ++ (subEncoder x.fieldType) ++ " a." ++ x.name ++ ")"
+        subEncoder x = bracketIfSpaced <| encoderHelp False False "" x
+        fieldName x = 
+            case capitalFields of
+                True->
+                    quote <| capitalize x.name
+                False->
+                    quote x.name
     in
         join "\n" <|
             ["object"] ++
@@ -203,7 +213,7 @@ encoderTuple: List Type -> String
 encoderTuple xs =
     let
         encodeElement (idx,elem) =
-          "(\"" ++ varUpper (idx+1) ++ "\", " ++ (bracketIfSpaced <| encoderHelp False "" elem) ++ " " ++ var (idx+1) ++ ")"
+          "(\"" ++ varUpper (idx+1) ++ "\", " ++ (bracketIfSpaced <| encoderHelp False False "" elem) ++ " " ++ var (idx+1) ++ ")"
     in
     join "\n" <|
         [ "object" ] ++
