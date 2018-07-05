@@ -7,6 +7,8 @@ import DecGen.TypeExtract exposing (extractAll)
 import List exposing (concat,filter, map, sortBy)
 import String exposing (contains, join, trim)
 
+--bug: type Putyu = { x: Maybe (Dict String Int)}
+
 both: String -> String
 both txt =
     (decoders txt) ++ "\n\n" ++ (encoders txt)

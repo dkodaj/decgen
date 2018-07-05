@@ -46,7 +46,7 @@ anonymousHelp topLevel a xs =
                 True->
                     anonymousHelp False b xs
                 False->
-                    (TypeMaybe b)::xs
+                    anonymousHelp False b ((TypeMaybe b)::xs)
         TypeOpaque b->
             xs
         TypeProduct (b,c)->
@@ -84,14 +84,20 @@ anonymousHelp topLevel a xs =
 grabAnonymousTypes: Bool -> List TypeDef -> List Type
 grabAnonymousTypes encoding typeDefs =
     let
-        core =
+        notMaybe a =
+            case a of
+                TypeMaybe _->
+                    False
+                _->
+                    True
+        typeFilter =
             case encoding of
                 True->
-                    coreTypeForEncoding
+                    filter (not << coreTypeForEncoding)
                 False->
-                    coreType
+                    (filter notMaybe << (filter (not << coreType)))
     in
-        filter (not << core) <| unique <| concat <| map anonymous typeDefs
+        typeFilter <| unique <| concat <| map anonymous typeDefs
 
 unique: List a -> List a
 unique xs =
