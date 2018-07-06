@@ -3,7 +3,7 @@ module DecGen exposing (..)
 import DecGen.Decoder exposing (decoder, decoderCapitalize)
 import DecGen.Destructuring exposing (bracket, stringify)
 import DecGen.Encoder exposing (encoder, encoderCapitalize)
-import DecGen.TypeExtract exposing (extractAll)
+import DecGen.TypeExtract exposing (extractAll, extractAllWithDefs)
 import List exposing (concat,filter, map, sortBy)
 import String exposing (contains, join, trim)
 
@@ -16,9 +16,10 @@ both txt =
 decoders: String -> String
 decoders txt =
     let
-        allTypes = extractAll False txt
+        (allTypes, anonymousDefs) = extractAllWithDefs False txt
     in
         stringify <|
+            anonymousDefs ++
             (map decoder <| sortBy .name allTypes )
 
 encoders: String -> String
@@ -39,9 +40,10 @@ bothCapitalize txt =
 decodersCapitalize: String -> String
 decodersCapitalize txt =
     let
-        allTypes = extractAll False txt
+        (allTypes, anonymousDefs) = extractAllWithDefs False txt
     in
         stringify <|
+            anonymousDefs ++
             (map decoderCapitalize <| sortBy .name allTypes )
 
 encodersCapitalize: String -> String
@@ -85,7 +87,7 @@ imports output =
                     False->
                         []
         importDict = maybe "Dict" Nothing []
-        importDec = maybe "Json.Decode" (Just "Dec") [" andThen "]
+        importDec = maybe "Json.Decode" (Just "Dec") [" andThen ", " field "]
         importDecPipe = maybe "Json.Decode.Pipeline" Nothing [" decode\n", " required "] 
         importEnc = maybe "Json.Encode" (Just "Enc") [" object\n"]
         importList = maybe "List" Nothing []

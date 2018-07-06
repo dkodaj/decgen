@@ -1,6 +1,6 @@
 module DecGen.Decoder exposing (decoder, decoderCapitalize)
 
-import DecGen.Destructuring exposing (bracketIfSpaced, capitalize, quote, tab, tabLines)
+import DecGen.Destructuring exposing (bracket, bracketIfSpaced, capitalize, quote, tab, tabLines)
 import DecGen.TypeExtract exposing (typeNick)
 import DecGen.Types exposing (coreType, Field, Type(..), TypeDef)
 import List exposing (concat, filter, indexedMap, length, map, map2, range)
@@ -62,7 +62,7 @@ decoderHelp capitalFields topLevel name a =
             TypeList b->
                 recurseOn "Dec.list" b
             TypeMaybe b->
-                recurseOn "Dec.nullable" b
+                recurseOn "Dec.maybe" b
             TypeOpaque b->
                 "decode"++b
             TypeProduct b->
@@ -116,14 +116,15 @@ decoderHelp capitalFields topLevel name a =
 decoderProduct: Bool -> (String, List Type) -> String
 decoderProduct productType (constructor, subTypes) =
     let
-        fieldDecode (a,b) = "|> required " ++ (quote <| capitalize a) ++ " " ++ (subDecoder b)
+        fieldDecode (a,b) = field varNum (quote <| capitalize a) (subDecoder b)
         fieldDefs = map2 (\a b->(a,b)) vars subTypes
         subDecoder a = bracketIfSpaced <| decoderHelp False False "" a
-        vars = map var <| range 1 (length subTypes)
+        vars = map var <| range 1 varNum
+        varNum = length subTypes
         simpleDecoder x = "Dec.map " ++ constructor ++ " " ++ (subDecoder x)
         complexDecoder = 
             join "\n" <|
-                [ "decode"
+                [ mapper varNum
                 , tab 1 constructor
                 ] ++
                 (map (tab 2) <| map fieldDecode fieldDefs)
@@ -139,8 +140,9 @@ decoderProduct productType (constructor, subTypes) =
 decoderRecord: Bool -> String -> List Field -> String
 decoderRecord capitalFields name xs =
     let
-        fieldDecode x = "|> required " ++ (fieldName x) ++ " " ++ (subDecoder x.fieldType)
+        fieldDecode x = field fieldNum (fieldName x) (subDecoder x.fieldType)
         subDecoder x = bracketIfSpaced <| decoderHelp False False "" x
+        fieldNum = length xs
         fieldName x = 
             case capitalFields of
                 True->
@@ -149,7 +151,7 @@ decoderRecord capitalFields name xs =
                     quote x.name
     in
         join "\n" <|
-            [ "decode"
+            [ mapper fieldNum
             , tab 1 name
             ] ++
             (map (tab 2) <| map fieldDecode xs)
@@ -157,15 +159,16 @@ decoderRecord capitalFields name xs =
 decoderTuple: List Type -> String
 decoderTuple xs =
     let
-        component (idx,elem) = tab 2 <| "|> required " ++ (quote <| varUpper <| idx+1) ++ " " ++ (subDecoder elem)
-        mapper = "(\\"++varList ++ " -> "++varListComma ++ ")"
+        component (idx,elem) = tab 2 <| field varNum (quote <| varUpper <| idx+1) (subDecoder elem)
+        toTuple = "(\\"++varList ++ " -> "++varListComma ++ ")"
         subDecoder x = bracketIfSpaced <| decoderHelp False False "" x
-        vars = map var <| range 1 (length xs)
+        vars = map var <| range 1 varNum
         varList = join " " vars
         varListComma = "(" ++ join ", " vars ++ ")"
+        varNum = length xs
     in
-        "decode" ++ "\n" ++
-        (tab 1 mapper) ++ "\n" ++
+        mapper varNum ++ "\n" ++
+        (tab 1 toTuple) ++ "\n" ++
         (join "\n" <| map component <| indexedMap (,) xs)
 
 decoderUnion: String -> List (String, List Type) -> String
@@ -208,6 +211,23 @@ decoderUnionComplex name xs =
             [ tab 2 "other->"
             , tab 3 <| "Dec.fail <| \"Unknown constructor for type " ++ name ++": \" ++ other"
             ]
+
+field n name dec =
+    case n < 9 of
+        True->
+            bracket <| " field " ++ name ++ " " ++ dec ++ " "
+        False->
+            "|> required " ++ name ++ " " ++ dec
+
+mapper n =
+    case n < 9 of
+        True->
+            let
+                suffix = if n==1 then "" else toString n
+            in
+                "Dec.map"++suffix
+        False->
+            "decode"
 
 var: Int -> String
 var n = "a" ++ toString n

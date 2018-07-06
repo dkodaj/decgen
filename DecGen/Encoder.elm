@@ -143,7 +143,7 @@ encoderMaybe x =
     join "\n" <|
         [ "case a of"
         , tab 1 "Just b->"
-        , tab 2 <| encoderHelp False False "" x ++ " b"
+        , tab 2 <| (bracketIfSpaced <| encoderHelp False False "" x) ++ " b"
         , tab 1 "Nothing->"
         , tab 2 "Enc.null" 
         ]

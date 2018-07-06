@@ -1,5 +1,6 @@
 module DecGen.TypeExtract exposing (
       extractAll
+    , extractAllWithDefs  
     , grabRawTypes
     , grabTypeDefs
     , typeNick)
@@ -11,6 +12,12 @@ import List exposing (map)
 import Regex exposing (find, HowMany(..), Match, regex)
 import String exposing (dropRight, join, trim, words)
 
+aliasDefs: List TypeDef -> List (List String)
+aliasDefs types =
+    let
+        def a = ["type alias " ++ a.name ++ " = " ++ (typeDescr True a.theType)]
+    in
+        map def types 
 
 anonymousType: Type -> TypeDef
 anonymousType a =
@@ -27,6 +34,14 @@ extractAll encoding txt =
         anonymous = anonymousTypes encoding declared
     in
         declared ++ anonymous
+
+extractAllWithDefs: Bool ->String -> (List TypeDef, List (List String))
+extractAllWithDefs encoding txt =
+    let
+        declared = grabTypeDefs txt
+        anonymous = anonymousTypes encoding declared
+    in
+        (declared ++ anonymous, aliasDefs anonymous)
 
 grabTypeDefs: String -> List TypeDef
 grabTypeDefs txt =
