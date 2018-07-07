@@ -7,8 +7,8 @@ module DecGen.TypeExtract exposing (
 
 import DecGen.AnonymousTypes exposing (grabAnonymousTypes)
 import DecGen.Destructuring exposing (bracketIfSpaced, civilize, clean, debracket, decomment, derecord, detuple, deunion, dropWord, removeColons, removeStringLiterals, singleLine)
-import DecGen.Types exposing (Field, RawType, Type(..), TypeDef)
-import List exposing (map)
+import DecGen.Types exposing (Field, isRecord, RawType, Type(..), TypeDef)
+import List exposing (filter, map)
 import Regex exposing (find, HowMany(..), Match, regex)
 import String exposing (dropRight, join, trim, words)
 
@@ -41,7 +41,7 @@ extractAllWithDefs encoding txt =
         declared = grabTypeDefs txt
         anonymous = anonymousTypes encoding declared
     in
-        (declared ++ anonymous, aliasDefs anonymous)
+        (declared ++ anonymous, aliasDefs <| filter isRecord anonymous)
 
 grabTypeDefs: String -> List TypeDef
 grabTypeDefs txt =

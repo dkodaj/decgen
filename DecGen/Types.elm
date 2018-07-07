@@ -43,6 +43,7 @@ simpleType this =
         _->
             False
 
+coreType: Type -> Bool
 coreType this =
     case this of
         TypeArray a->
@@ -54,9 +55,18 @@ coreType this =
         _->
             simpleType this
 
+coreTypeForEncoding: Type -> Bool
 coreTypeForEncoding this =
     case this of
         TypeMaybe _->
             False
         _->
             coreType this
+
+isRecord: TypeDef -> Bool
+isRecord this =
+    case this.theType of
+        TypeRecord _->
+            True
+        _->
+            False
