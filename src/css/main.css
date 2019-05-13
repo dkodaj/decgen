@@ -1,0 +1,32 @@
+body, html {
+	overflow:hidden;
+}
+
+.codeInput {
+	font-family: monospace;
+	white-space:pre;
+}
+
+.myHero {
+	background-image: url("mikrobi.jpg");
+	background-position: right;
+	background-repeat: no-repeat;
+	background-size: contain;
+}
+
+.myButton {
+	margin: 5px;
+	font-family: monospace;
+}
+
+.center {
+	margin: 0 auto;
+}
+
+.mono {
+	font-family: monospace;
+}
+
+.marg {
+	margin: 0 10px 0 10px;
+}

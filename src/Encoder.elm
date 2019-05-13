@@ -1,0 +1,325 @@
+module Encoder exposing (encoder)
+
+import Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, tab, tabLines)
+import List exposing (filter, indexedMap, length, map, map2, range)
+import String exposing (contains, dropRight, join, split)
+import TypeExtract exposing (typeNick)
+import Types exposing (Field, Type(..), TypeDef, coreTypeForEncoding)
+
+
+encoder : TypeDef -> List String
+encoder typeDef =
+    let
+        encoderBody =
+            map (tab 1) <| split "\n" <| encoderHelp True typeDef.name typeDef.theType
+
+        encoderName =
+            case typeDef.theType of
+                TypeTuple xs ->
+                    "encode" ++ typeDef.name ++ " (" ++ varListComma xs ++ ") ="
+
+                TypeProduct ( b, c ) ->
+                    case c of
+                        [] ->
+                            "encode" ++ typeDef.name ++ " a ="
+
+                        _ ->
+                            "encode" ++ typeDef.name ++ " (" ++ b ++ " " ++ varList c ++ ") ="
+
+                _ ->
+                    "encode" ++ typeDef.name ++ " a ="
+
+        vars a =
+            map var <| range 1 (length a)
+
+        varList a =
+            join " " (vars a)
+
+        varListComma a =
+            join ", " (vars a)
+    in
+    encoderName :: encoderBody
+
+
+encoderHelp : Bool -> String -> Type -> String
+encoderHelp topLevel name a =
+    let
+        maybeAppend txt =
+            case topLevel of
+                True ->
+                    bracketIfSpaced txt ++ " a"
+
+                False ->
+                    txt
+
+        recurseOn x y =
+            x ++ " << " ++ (bracketIfSpaced <| encoderHelp False "" y)
+    in
+    case a of
+        TypeArray b ->
+            maybeAppend <| recurseOn "Encode.array" b
+
+        TypeBool ->
+            maybeAppend <| "Encode.bool"
+
+        TypeDict ( b, c ) ->
+            case topLevel of
+                True ->
+                    encoderDict name ( b, c )
+
+                False ->
+                    case name of
+                        "" ->
+                            "encode" ++ typeNick a
+
+                        _ ->
+                            "encode" ++ name
+
+        TypeError b ->
+            maybeAppend <| b
+
+        TypeFloat ->
+            maybeAppend <| "Encode.float"
+
+        TypeInt ->
+            maybeAppend <| "Encode.int"
+
+        TypeList b ->
+            maybeAppend <| recurseOn "Encode.list" b
+
+        TypeMaybe b ->
+            case topLevel of
+                True ->
+                    encoderMaybe b
+
+                False ->
+                    case name of
+                        "" ->
+                            "encode" ++ typeNick a
+
+                        _ ->
+                            "encode" ++ name
+
+        TypeOpaque b ->
+            maybeAppend <| "encode" ++ b
+
+        TypeProduct b ->
+            case topLevel of
+                True ->
+                    encoderProduct True False b
+
+                False ->
+                    case name of
+                        "" ->
+                            "encode" ++ typeNick a
+
+                        _ ->
+                            "encode" ++ name
+
+        TypeRecord b ->
+            case topLevel of
+                True ->
+                    encoderRecord b
+
+                False ->
+                    case name of
+                        "" ->
+                            "encode" ++ typeNick a
+
+                        _ ->
+                            "encode" ++ name
+
+        TypeString ->
+            maybeAppend <| "Encode.string"
+
+        TypeTuple bs ->
+            case topLevel of
+                True ->
+                    encoderTuple bs
+
+                False ->
+                    case name of
+                        "" ->
+                            "encode" ++ typeNick a
+
+                        _ ->
+                            "encode" ++ name
+
+        TypeUnion b ->
+            case topLevel of
+                True ->
+                    encoderUnion b
+
+                False ->
+                    case name of
+                        "" ->
+                            let
+                                folder x y =
+                                    x ++ ", " ++ y
+
+                                typeStr =
+                                    "{ " ++ (List.foldl folder "" <| map Tuple.first b) ++ " }"
+                            in
+                            "Encoder parse error: unanymous union type: " ++ typeStr
+
+                        _ ->
+                            "encode" ++ name
+
+
+encoderDict : String -> ( Type, Type ) -> String
+encoderDict name ( b, c ) =
+    let
+        subEncoderName =
+            "encode" ++ name ++ "Tuple"
+    in
+    join "\n" <|
+        [ "let"
+        , tab 1 <| subEncoderName ++ " (a1,a2) ="
+        , tab 2 "Encode.object"
+        , tab 3 <| "[ (\"A1\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " a1)"
+        , tab 3 <| ", (\"A2\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " a2) ]"
+        , "in"
+        , tab 1 <| "(Encode.list " ++ subEncoderName ++ ") (Dict.toList a)"
+        ]
+
+
+encoderMaybe : Type -> String
+encoderMaybe x =
+    join "\n" <|
+        [ "case a of"
+        , tab 1 "Just b->"
+        , tab 2 <| (bracketIfSpaced <| encoderHelp False "" x) ++ " b"
+        , tab 1 "Nothing->"
+        , tab 2 "Encode.null"
+        ]
+
+
+encoderProduct : Bool -> Bool -> ( String, List Type ) -> String
+encoderProduct productType addConstructor ( constructor, subTypes ) =
+    let
+        fieldDefs =
+            map2 (\a b -> ( a, b )) vars subTypes
+
+        fieldEncode ( a, b ) =
+            "(" ++ (quote <| capitalize a) ++ ", " ++ subEncoder b ++ " " ++ a ++ ")"
+
+        vars =
+            map var <| range 1 (length subTypes)
+
+        subEncoder a =
+            let
+                fullEncoder =
+                    dropRight 2 <| encoderHelp True "" a
+            in
+            case coreTypeForEncoding a of
+                True ->
+                    fullEncoder
+
+                False ->
+                    bracketIfSpaced <| encoderHelp False "" a
+
+        constrEncode =
+            case addConstructor of
+                False ->
+                    []
+
+                True ->
+                    [ "(\"Constructor\", Encode.string " ++ quote constructor ++ ")" ]
+
+        defaultEncoder =
+            join "\n" <|
+                [ "Encode.object" ]
+                    ++ (map (tab 1) <| bracketCommas <| constrEncode ++ map fieldEncode fieldDefs)
+                    ++ [ tab 1 "]" ]
+    in
+    case subTypes of
+        [] ->
+            case addConstructor of
+                True ->
+                    defaultEncoder
+
+                False ->
+                    "Encode.string " ++ quote constructor
+
+        x :: [] ->
+            case productType of
+                True ->
+                    subEncoder x ++ " a1"
+
+                False ->
+                    defaultEncoder
+
+        _ ->
+            defaultEncoder
+
+
+encoderRecord : List Field -> String
+encoderRecord xs =
+    let
+        fieldEncode x =
+            "(" ++ (quote x.name) ++ ", " ++ subEncoder x.fieldType ++ " a." ++ x.name ++ ")"
+
+        subEncoder x =
+            bracketIfSpaced <| encoderHelp False "" x
+
+    in
+    join "\n" <|
+        [ "Encode.object" ]
+            ++ (map (tab 1) <| bracketCommas <| map fieldEncode xs)
+            ++ [ tab 1 "]" ]
+
+
+encoderTuple : List Type -> String
+encoderTuple xs =
+    let
+        encodeElement ( idx, elem ) =
+            "(\"" ++ varUpper (idx + 1) ++ "\", " ++ (bracketIfSpaced <| encoderHelp False "" elem) ++ " " ++ var (idx + 1) ++ ")"
+    in
+    join "\n" <|
+        [ "Encode.object" ]
+            ++ (map (tab 1) <| bracketCommas <| map encodeElement <| indexedMap Tuple.pair xs)
+            ++ [ tab 1 "]" ]
+
+
+encoderUnion : List ( String, List Type ) -> String
+encoderUnion xs =
+    let
+        complexConstructor ( a, b ) =
+            b /= []
+
+        simpleUnion =
+            filter complexConstructor xs == []
+    in
+    case simpleUnion of
+        True ->
+            encoderUnionSimple xs
+
+        False ->
+            encoderUnionComplex xs
+
+
+encoderUnionSimple : List ( String, List Type ) -> String
+encoderUnionSimple xs =
+    "Encode.string <| toString a"
+
+
+encoderUnionComplex : List ( String, List Type ) -> String
+encoderUnionComplex xs =
+    let
+        varList ys =
+            join " " <| map var <| range 1 (length ys)
+
+        encodeConstructor ( a, ys ) =
+            tab 1 (a ++ " " ++ varList ys ++ "->" ++ "\n") ++ tabLines 2 (encoderProduct False True ( a, ys ))
+    in
+    join "\n" <|
+        [ "case a of" ]
+            ++ map encodeConstructor xs
+
+
+var n =
+    "a" ++ String.fromInt n
+
+
+varUpper n =
+    "A" ++ String.fromInt n

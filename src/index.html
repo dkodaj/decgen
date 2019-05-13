@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="robots" content="norobots, nofollow">
+	<link href="css/main.css" rel="stylesheet">
+	<link href="css/bulma(0.7.1)min.css" rel="stylesheet" type="text/css" media="screen" />
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.10/css/all.css" integrity="sha384-+d0P83n9kaQMCwj8F4RJB66tzIwOKmrdb46+porD/OvrJ+37WqIM7UoBtwHO6Nlg" crossorigin="anonymous">
+	<title>Elm Decoder Generator</title>
+
+</div>
+
+
+</head>
+<body>
+	
+	<div id="elm"></div>
+	
+	<script src="main.js"></script>
+	<script>
+
+    	let app = Elm.GeneratePage.init({node: document.getElementById('elm')});
+
+    	app.ports.copyText.subscribe(function(txt){
+		  var hidden = document.createElement("textarea");
+	   	  hidden.value = txt;
+	   	  document.body.appendChild(hidden);
+		  console.log(hidden.value);
+	   	  hidden.select();
+		  document.execCommand("copy");
+		  document.body.removeChild(hidden);
+		});
+
+	</script>
+
+	
+</body>
+</html>
