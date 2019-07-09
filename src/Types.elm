@@ -6,13 +6,15 @@ type Type
     | TypeBool
     | TypeDict ( Type, Type )
     | TypeError String --parse error
+    | TypeExtendedRecord (List TypeDef) --record defined using an extensible one
+    | TypeExtensible (List TypeDef) --extensible record
     | TypeFloat
     | TypeInt
     | TypeList Type
     | TypeMaybe Type
     | TypeOpaque String --type not core and not defined in the input
     | TypeProduct ( String, List Type )
-    | TypeRecord (List Field)
+    | TypeRecord (List TypeDef)
     | TypeString
     | TypeTuple (List Type)
     | TypeUnion (List ( String, List Type ))
@@ -22,17 +24,12 @@ type ExtraPackage
     = Extra  --Json.Decode.Extra
     | Pipeline --Json.Decode.Pipeline
 
-type alias Field =
-    { name : String
-    , fieldType : Type
-    }
-
 
 type alias RawType =
     { name : String
     , def : String
+    , extensible : Bool
     }
-
 
 type alias TypeDef =
     { name : String
@@ -82,6 +79,37 @@ coreTypeForEncoding this =
 
         _ ->
             coreType this
+
+isEmptyRecord : TypeDef -> Bool
+isEmptyRecord this =
+    case this.theType of
+        TypeRecord [] ->
+            True
+        
+        _ ->
+            False
+
+isNonemptyExtended : TypeDef -> Bool
+isNonemptyExtended this =
+    case this.theType of
+        TypeExtendedRecord [] ->
+            False
+            
+        TypeExtendedRecord _ ->
+            True    
+            
+        _ ->
+            False
+
+
+isExtensible : TypeDef -> Bool
+isExtensible this =
+    case this.theType of
+        TypeExtensible _ ->
+            True
+
+        _ ->
+            False
 
 
 isRecord : TypeDef -> Bool

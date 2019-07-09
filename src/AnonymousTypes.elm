@@ -6,10 +6,13 @@ import Types exposing (Type(..), TypeDef, coreType, coreTypeForEncoding)
 
 
 --== Find anonymous types ==--
+
 -- An anonymous type is a record or tuple inside a type definition, e.g.:
 --      type X = Y (String, Int) | Z {a: Bool, b: Float}
+
 -- The module will generate decoders for anonymous types, but the result is ugly.
--- If you want it nice, use aliases instead:
+-- If you want nice results, use aliases instead:
+
 --      type X = Y MyTuple | Z MyRecord
 --      type alias MyTuple = (String, Int)
 --      type alias MyRecord = {a: Bool, b: Float}
@@ -43,6 +46,21 @@ anonymousHelp topLevel a xs =
 
         TypeError b ->
             xs
+            
+        TypeExtendedRecord b -> --same as record
+            let
+                recurseOn =
+                    foldr (<<) identity <| map (anonymousHelp False) <| map .theType b
+            in
+            case topLevel of
+                True ->
+                    recurseOn xs
+
+                False ->
+                    recurseOn (a :: xs)
+            
+        TypeExtensible _ -> --extensible records cannot be anonymous
+            xs
 
         TypeFloat ->
             xs
@@ -75,7 +93,7 @@ anonymousHelp topLevel a xs =
         TypeRecord b ->
             let
                 recurseOn =
-                    foldr (<<) identity <| map (anonymousHelp False) <| map .fieldType b
+                    foldr (<<) identity <| map (anonymousHelp False) <| map .theType b
             in
             case topLevel of
                 True ->

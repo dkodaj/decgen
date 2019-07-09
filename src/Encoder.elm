@@ -4,7 +4,7 @@ import Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote
 import List exposing (filter, indexedMap, length, map, map2, range)
 import String exposing (contains, dropRight, join, split)
 import TypeExtract exposing (typeNick)
-import Types exposing (Field, Type(..), TypeDef, coreTypeForEncoding)
+import Types exposing (Type(..), TypeDef, coreTypeForEncoding)
 
 
 encoder : TypeDef -> List String
@@ -77,6 +77,22 @@ encoderHelp topLevel name a =
 
         TypeError b ->
             maybeAppend <| b
+            
+        TypeExtendedRecord b -> --same as TypeRecord
+            case topLevel of
+                True ->
+                    encoderRecord b
+
+                False ->
+                    case name of
+                        "" ->
+                            "encode" ++ typeNick a
+
+                        _ ->
+                            "encode" ++ name
+         
+        TypeExtensible b ->
+            maybeAppend <| "<< Extensible records cannot be encoded >>"
 
         TypeFloat ->
             maybeAppend <| "Encode.float"
@@ -253,11 +269,11 @@ encoderProduct productType addConstructor ( constructor, subTypes ) =
             defaultEncoder
 
 
-encoderRecord : List Field -> String
+encoderRecord : List TypeDef -> String
 encoderRecord xs =
     let
         fieldEncode x =
-            "(" ++ (quote x.name) ++ ", " ++ subEncoder x.fieldType ++ " a." ++ x.name ++ ")"
+            "(" ++ (quote x.name) ++ ", " ++ subEncoder x.theType ++ " a." ++ x.name ++ ")"
 
         subEncoder x =
             bracketIfSpaced <| encoderHelp False "" x

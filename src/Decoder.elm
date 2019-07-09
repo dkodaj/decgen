@@ -4,7 +4,7 @@ import Destructuring exposing (bracket, bracketIfSpaced, capitalize, quote, tab,
 import List exposing (concat, filter, indexedMap, length, map, map2, range)
 import String exposing (join, split)
 import TypeExtract exposing (typeNick)
-import Types exposing (ExtraPackage(..), Field, Type(..), TypeDef, coreType)
+import Types exposing (ExtraPackage(..), Type(..), TypeDef, coreType)
 
 
 decoder : ExtraPackage -> TypeDef -> List String
@@ -68,6 +68,27 @@ decoderHelp topLevel name a extra =
 
         TypeError b ->
             b
+            
+        TypeExtendedRecord b ->
+            case topLevel of
+                True ->
+                    case name of
+                        "" ->
+                            decoderRecord (typeNick a) b extra
+
+                        _ ->
+                            decoderRecord (name++"Extended") b extra
+
+                False ->
+                    case name of
+                        "" ->
+                            "decode" ++ typeNick a
+
+                        _ ->
+                            "decode" ++ name ++ "Extended"
+            
+        TypeExtensible _ ->
+            "<< Extensible records are not decoded. >>"
 
         TypeFloat ->
             "Decode.float"
@@ -195,11 +216,11 @@ decoderProduct productType ( constructor, subTypes ) extra =
             complexDecoder
 
 
-decoderRecord : String -> List Field -> ExtraPackage -> String
+decoderRecord : String -> List TypeDef -> ExtraPackage -> String
 decoderRecord name xs extra =
     let
         fieldDecode x =
-            field fieldNum (quote x.name) (subDecoder x.fieldType) extra
+            field fieldNum (quote x.name) (subDecoder x.theType) extra
 
         subDecoder x =
             bracketIfSpaced <| decoderHelp False "" x extra

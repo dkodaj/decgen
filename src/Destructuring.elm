@@ -19,7 +19,13 @@ derecord txt =
             []
 
         Just x ->
-            derecordHelp (indices "," x) x
+            let
+                y = 
+                    --clean up extensible records:
+                    -- { a | email: String }  --> { email: String }
+                    trim <| remove "^.*\\|" x
+            in
+            derecordHelp (indices "," y) y
 
 
 derecordHelp : List Int -> String -> List ( String, String )
