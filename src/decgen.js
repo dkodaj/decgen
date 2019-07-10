@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const Module = require('./Cli.js')
+const Module = require('../src/Cli.js')
 const fs = require('fs')
 const process = require('process')
 
