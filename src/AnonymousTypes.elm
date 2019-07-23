@@ -63,6 +63,9 @@ anonymousHelp topLevel a xs =
             xs
 
         TypeFloat ->
+            xs            
+        
+        TypeImported b ->
             xs
 
         TypeInt ->
@@ -78,9 +81,6 @@ anonymousHelp topLevel a xs =
 
                 False ->
                     anonymousHelp False b (TypeMaybe b :: xs)
-
-        TypeOpaque b ->
-            xs
 
         TypeProduct ( b, c ) ->
             case c of

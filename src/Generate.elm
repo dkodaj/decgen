@@ -1,14 +1,28 @@
-module Generate exposing (both, decoders, encoders, imports)
+module Generate exposing (both, decoders, decodersWithImports, encoders, imports)
 
 import Decoder exposing (decoder)
 import Destructuring exposing (bracket, stringify)
 import Encoder exposing (encoder)
 import List exposing (concat, filter, map, sortBy)
+import ParseModules
+import ParseType exposing (extractAll, extractAllWithDefs)
 import String exposing (contains, join, trim)
-import TypeExtract exposing (extractAll, extractAllWithDefs)
 import Types exposing (ExtraPackage)
 
-            
+--== Generate encoders/decoders from a list of .elm files ==--
+    -- the head of the list is the base module, the rest are its depencies
+    -- types defined in the tail are only decoded/encoded if they are
+    -- imported by the head, or by something imported by the head etc.
+
+decodersWithImports : ExtraPackage -> List String -> String
+decodersWithImports extra sources =
+    stringify <|
+        ( map (decoder extra)
+            <| sortBy .name
+                <| ParseModules.parseAll False sources 
+        )
+
+--== Generate encoders/decoders from a single .elm file or a bunch of type definitions ==--
 
 both : ExtraPackage -> String -> String
 both extra txt =
@@ -23,7 +37,8 @@ decoders extra txt =
     in
     stringify <|
         anonymousDefs
-            ++ (map (decoder extra) <| sortBy .name allTypes)
+            ++ (map (decoder extra)
+                <| sortBy .name allTypes)
 
 
 encoders : String -> String
@@ -75,7 +90,7 @@ imports output =
 
         importDec =
             maybe "Json.Decode" (Just "Decode")
-            
+
         importDecExtra =
             maybe "Json.Decode.Extra" (Just "Extra")
 

@@ -1,9 +1,9 @@
 module Encoder exposing (encoder)
 
-import Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, tab, tabLines)
+import Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, removeColons, tab, tabLines)
 import List exposing (filter, indexedMap, length, map, map2, range)
+import ParseType exposing (typeNick)
 import String exposing (contains, dropRight, join, split)
-import TypeExtract exposing (typeNick)
 import Types exposing (Type(..), TypeDef, coreTypeForEncoding)
 
 
@@ -16,19 +16,22 @@ encoder typeDef =
         encoderName =
             case typeDef.theType of
                 TypeTuple xs ->
-                    "encode" ++ typeDef.name ++ " (" ++ varListComma xs ++ ") ="
+                    "encode" ++ name ++ " (" ++ varListComma xs ++ ") ="
 
                 TypeProduct ( b, c ) ->
                     case c of
                         [] ->
-                            "encode" ++ typeDef.name ++ " a ="
+                            "encode" ++ name ++ " a ="
 
                         _ ->
-                            "encode" ++ typeDef.name ++ " (" ++ b ++ " " ++ varList c ++ ") ="
+                            "encode" ++ name ++ " (" ++ b ++ " " ++ varList c ++ ") ="
 
                 _ ->
-                    "encode" ++ typeDef.name ++ " a ="
+                    "encode" ++ name ++ " a ="
 
+        name =
+            removeColons typeDef.name --turn "Vec3.vec3" into "Vec3vec3"
+        
         vars a =
             map var <| range 1 (length a)
 
@@ -42,8 +45,11 @@ encoder typeDef =
 
 
 encoderHelp : Bool -> String -> Type -> String
-encoderHelp topLevel name a =
+encoderHelp topLevel rawName a =
     let
+        name =
+            removeColons rawName
+        
         maybeAppend txt =
             case topLevel of
                 True ->
@@ -77,8 +83,9 @@ encoderHelp topLevel name a =
 
         TypeError b ->
             maybeAppend <| b
-            
-        TypeExtendedRecord b -> --same as TypeRecord
+
+        TypeExtendedRecord b ->
+            --same as TypeRecord
             case topLevel of
                 True ->
                     encoderRecord b
@@ -90,12 +97,15 @@ encoderHelp topLevel name a =
 
                         _ ->
                             "encode" ++ name
-         
+
         TypeExtensible b ->
             maybeAppend <| "<< Extensible records cannot be encoded >>"
 
         TypeFloat ->
             maybeAppend <| "Encode.float"
+
+        TypeImported b ->
+            maybeAppend <| "encode" ++ removeColons b
 
         TypeInt ->
             maybeAppend <| "Encode.int"
@@ -115,9 +125,6 @@ encoderHelp topLevel name a =
 
                         _ ->
                             "encode" ++ name
-
-        TypeOpaque b ->
-            maybeAppend <| "encode" ++ b
 
         TypeProduct b ->
             case topLevel of
@@ -186,7 +193,7 @@ encoderDict : String -> ( Type, Type ) -> String
 encoderDict name ( b, c ) =
     let
         subEncoderName =
-            "encode" ++ name ++ "Tuple"
+            "encode" ++ removeColons name ++ "Tuple"
     in
     join "\n" <|
         [ "let"
@@ -273,11 +280,10 @@ encoderRecord : List TypeDef -> String
 encoderRecord xs =
     let
         fieldEncode x =
-            "(" ++ (quote x.name) ++ ", " ++ subEncoder x.theType ++ " a." ++ x.name ++ ")"
+            "(" ++ quote (removeColons x.name) ++ ", " ++ subEncoder x.theType ++ " a." ++ removeColons x.name ++ ")"
 
         subEncoder x =
             bracketIfSpaced <| encoderHelp False "" x
-
     in
     join "\n" <|
         [ "Encode.object" ]

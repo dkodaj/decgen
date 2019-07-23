@@ -9,10 +9,10 @@ type Type
     | TypeExtendedRecord (List TypeDef) --record defined using an extensible one
     | TypeExtensible (List TypeDef) --extensible record
     | TypeFloat
+    | TypeImported String --type not core and not defined in the input
     | TypeInt
     | TypeList Type
     | TypeMaybe Type
-    | TypeOpaque String --type not core and not defined in the input
     | TypeProduct ( String, List Type )
     | TypeRecord (List TypeDef)
     | TypeString

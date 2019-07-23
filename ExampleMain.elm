@@ -1,10 +1,12 @@
-module Example exposing (Record, Union, Dict)
+module ExampleMain exposing (Record, Union, Dict)
+
 import Dict
+import ExampleDep1 exposing (Union)
 
 type alias Dict = Dict.Dict Int Record
+
 type alias Record = {
     primitive : String
   , union : Union
   }
 
-type Union = A | B String

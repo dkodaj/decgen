@@ -1,15 +1,29 @@
-module TypeExtract exposing
+module ParseType exposing
     ( extractAll
     , extractAllWithDefs
+    , extractBasic
     , grabRawTypes
     , grabTypeDefs
     , typeNick
     )
-
+    
 import AnonymousTypes exposing (grabAnonymousTypes)
-import Destructuring exposing (bracketIfSpaced, civilize, clean, debracket, decomment, derecord, detuple, deunion, dropWord, removeColons, removeStringLiterals, singleLine)
+import Destructuring exposing 
+    ( bracketIfSpaced
+    , civilize
+    , debracket
+    , decomment
+    , derecord
+    , detuple
+    , deunion
+    , dropWord
+    , regex
+    , removeColons
+    , removeNothings
+    , removeStringLiterals
+    , singleLine
+    )
 import List exposing (filter, map)
-import Regex exposing (Match)
 import String exposing (dropRight, join, trim, words)
 import Types exposing (RawType, Type(..), TypeDef)
 
@@ -17,16 +31,16 @@ import Types exposing (RawType, Type(..), TypeDef)
 aliasDefs : List TypeDef -> List (List String)
 aliasDefs types =
     let
-        name a = 
+        name a =
             case a.theType of
                 TypeExtendedRecord _ ->
                     a.name ++ "Extended"
-                    
+
                 _ ->
                     a.name
-        
+
         def a =
-            [ "type alias " ++ (name a) ++ " = " ++ typeDescr True a.theType ]
+            [ "type alias " ++ name a ++ " = " ++ typeDescr True a.theType ]
     in
     map def types
 
@@ -50,38 +64,46 @@ extractAll encoding txt =
     filter (not << Types.isExtensible) (declared ++ anonymous)
 
 
+--includes type defs for anonymous types, like the record inside this:
+    -- type Role = User { name : String, email: String }
 extractAllWithDefs : Bool -> String -> ( List TypeDef, List (List String) )
 extractAllWithDefs encoding txt =
-    let        
-        (declared, anonymous) =
+    let
+        ( declared, anonymous ) =
             extractHelp encoding txt
-            
+
         nonEmptyRecord a =
-            Types.isRecord a && not (Types.isEmptyRecord a)                               
-            
+            Types.isRecord a && not (Types.isEmptyRecord a)
+
         needToDefine =
             filter nonEmptyRecord anonymous
-            ++ filter Types.isNonemptyExtended (declared ++ anonymous)
-            
+                ++ filter Types.isNonemptyExtended (declared ++ anonymous)
+
         filtered =
             filter (not << Types.isExtensible) (declared ++ anonymous)
     in
     ( filtered, aliasDefs needToDefine )
 
-
-extractHelp : Bool -> String -> (List TypeDef, List TypeDef)
-extractHelp encoding txt =
+--ignore anonymous tyoes
+extractBasic : Bool -> String -> List TypeDef
+extractBasic encoding txt =
     let
         declared =
             grabTypeDefs txt
-            
+    in
+    map (detectExtendedRecord declared) declared
+
+
+extractHelp : Bool -> String -> ( List TypeDef, List TypeDef )
+extractHelp encoding txt =
+    let
         scannedDeclared =
-            map (detectExtendedRecord declared) declared
-            
+            extractBasic encoding txt
+
         anonymous =
             anonymousTypes encoding scannedDeclared
-    in                    
-      ( scannedDeclared, anonymous )
+    in
+    ( scannedDeclared, anonymous )
 
 
 grabTypeDefs : String -> List TypeDef
@@ -95,17 +117,18 @@ grabTypeDefs txt =
 
 grabRawType : List (Maybe String) -> Maybe RawType
 grabRawType submatches =
-    case submatches of          
-        Just a :: Just b :: _ ->
+    case submatches of
+        (Just a) :: (Just b) :: _ ->
             case String.words (trim a) of
-                x :: y :: _ -> -- means that the name is something like "LineSegment a", i.e. an extensible record
+                x :: y :: _ ->
+                    -- means that the name is something like "LineSegment a", i.e. an extensible record
                     Just { name = x, def = trim <| singleLine b, extensible = True }
-                
+
                 x :: _ ->
                     Just { name = x, def = trim <| singleLine b, extensible = False }
-                
+
                 [] ->
-                    Nothing                            
+                    Nothing
 
         _ ->
             Nothing
@@ -113,17 +136,7 @@ grabRawType submatches =
 
 grabRawTypes : String -> List RawType
 grabRawTypes txt =
-    clean <| map grabRawType <| map .submatches <| regexIt <| decomment <| removeStringLiterals txt
-
-
-regexIt : String -> List Match
-regexIt txt =
-    case Regex.fromString typeRegex of
-        Nothing ->
-            []
-
-        Just regex ->
-            Regex.find regex txt
+    removeNothings <| map grabRawType <| map .submatches <| regex typeRegex <| decomment <| removeStringLiterals txt
 
 
 typeRegex =
@@ -149,26 +162,26 @@ typeOf extensible def =
 
         [] ->
             case derecord def of
-                (a1,a2) :: bs ->
+                ( a1, a2 ) :: bs ->
                     let
                         makeField ( x, y ) =
                             TypeDef x (subType y)
-                            
+
                         fields =
                             case a1 == "" of
                                 True ->
                                     []
-                                
+
                                 False ->
-                                    map makeField ((a1,a2) :: bs)                                
+                                    map makeField (( a1, a2 ) :: bs)
                     in
                     case extensible of
                         True ->
                             TypeExtensible fields
-                        
+
                         False ->
                             TypeRecord fields
-                            
+
                 [] ->
                     case words (debracket def) of
                         [] ->
@@ -224,11 +237,11 @@ typeOf extensible def =
                                                     ( x, map subType y )
                                     in
                                     case deunion def of
-                                        (x, y) :: [] ->
+                                        ( x, y ) :: [] ->
                                             case y of
                                                 [ "" ] ->
-                                                    TypeOpaque x
-                                                    
+                                                    TypeImported x
+
                                                 _ ->
                                                     TypeProduct ( x, map subType y )
 
@@ -263,8 +276,9 @@ typeDescr bracketIt a =
 
         TypeError b ->
             b
-        
-        TypeExtendedRecord b -> --same as TypeRecord
+
+        TypeExtendedRecord b ->
+            --same as TypeRecord
             let
                 fieldString x =
                     x.name ++ ": " ++ typeDescr False x.theType ++ ", "
@@ -273,7 +287,7 @@ typeDescr bracketIt a =
                     dropRight 2 <| String.concat <| map fieldString b
             in
             "{" ++ fields ++ "}"
-        
+
         TypeExtensible b ->
             let
                 fieldString x =
@@ -285,7 +299,10 @@ typeDescr bracketIt a =
             "{ a | " ++ fields ++ "}"
 
         TypeFloat ->
-            "Float"
+            "Float"        
+        
+        TypeImported b ->
+            b
 
         TypeInt ->
             "Int"
@@ -295,9 +312,6 @@ typeDescr bracketIt a =
 
         TypeMaybe b ->
             wrap <| "Maybe " ++ typeDescr True b
-
-        TypeOpaque b ->
-            b
 
         TypeProduct ( b, c ) ->
             case c of
@@ -348,7 +362,7 @@ typeNick a =
     case a of
         TypeExtendedRecord _ ->
             tag "Record"
-        
+
         TypeRecord _ ->
             tag "Record"
 
@@ -358,12 +372,16 @@ typeNick a =
         _ ->
             tag ""
 
---== Extensible records ==--    
+
+
+--== Extensible records ==--
+
 
 detectExtendedRecord : List TypeDef -> TypeDef -> TypeDef
-detectExtendedRecord declaredTypes input =  
+detectExtendedRecord declaredTypes input =
     let
-        newType = detectExtendedRecordHelp declaredTypes [] input.theType
+        newType =
+            detectExtendedRecordHelp declaredTypes [] input.theType
     in
     { input | theType = newType }
 
@@ -373,73 +391,72 @@ detectExtendedRecordHelp declaredTypes fieldsSoFar input =
     let
         extensiblesFor a =
             extensibleFields declaredTypes a
-            
+
         recursion a b =
             detectExtendedRecordHelp declaredTypes a b
-            
+
         lookAt a =
-            detectExtendedRecordHelp declaredTypes [] a            
-        
+            detectExtendedRecordHelp declaredTypes [] a
+
         lookInto a =
-            detectExtendedRecord declaredTypes a        
+            detectExtendedRecord declaredTypes a
     in
     case input of
         TypeArray ofType ->
             TypeArray (lookAt ofType)
-            
+
         TypeDict ( key, val ) ->
             TypeDict ( key, lookAt val )
-            
+
         TypeExtendedRecord fields ->
             TypeExtendedRecord (map lookInto fields)
-            
+
         TypeExtensible fields ->
             TypeExtensible (map lookInto fields)
-            
+
         TypeList ofType ->
             TypeList (lookAt ofType)
-            
+
         TypeMaybe ofType ->
             TypeMaybe (lookAt ofType)
-        
-        TypeProduct (constructor, [subType]) ->
+
+        TypeProduct ( constructor, [ subType ] ) ->
             case extensiblesFor constructor of
                 Just extensibles ->
                     case subType of
                         TypeRecord newFields ->
                             TypeExtendedRecord (fieldsSoFar ++ map lookInto (extensibles ++ newFields))
-                            
+
                         TypeProduct _ ->
                             recursion (fieldsSoFar ++ extensibles) subType
-                            
-                        _->
+
+                        _ ->
                             input
-                
-                Nothing->
+
+                Nothing ->
                     input
-        
+
         TypeRecord newFields ->
             case fieldsSoFar of
                 [] ->
                     TypeRecord (map lookInto newFields)
-                    
+
                 _ ->
                     TypeExtendedRecord (fieldsSoFar ++ map lookInto newFields)
-                    
+
         TypeTuple typeList ->
             TypeTuple (map lookAt typeList)
-            
+
         TypeUnion list ->
             let
-                mapper (constructor, subTypes) =
-                    (constructor, map lookAt subTypes)
+                mapper ( constructor, subTypes ) =
+                    ( constructor, map lookAt subTypes )
             in
             TypeUnion (map mapper list)
-        
+
         _ ->
             input
-            
-                    
+
 
 extensibleFields : List TypeDef -> String -> Maybe (List TypeDef)
 extensibleFields allTypDefs name =
@@ -452,9 +469,9 @@ extensibleFields allTypDefs name =
             case x.theType of
                 TypeExtensible fields ->
                     Just fields
-                
+
                 _ ->
                     Nothing
-            
-        []->
+
+        [] ->
             Nothing
