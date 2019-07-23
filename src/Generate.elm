@@ -1,4 +1,4 @@
-module Generate exposing (both, decoders, decodersWithImports, encoders, imports)
+module Generate exposing (both, bothWithImports, decoders, encoders, imports)
 
 import Decoder exposing (decoder)
 import Destructuring exposing (bracket, stringify)
@@ -14,6 +14,12 @@ import Types exposing (ExtraPackage)
     -- types defined in the tail are only decoded/encoded if they are
     -- imported by the head, or by something imported by the head etc.
 
+
+bothWithImports : ExtraPackage -> List String -> String
+bothWithImports extra txt =
+    decodersWithImports extra txt ++ "\n\n" ++ encodersWithImports txt
+
+
 decodersWithImports : ExtraPackage -> List String -> String
 decodersWithImports extra sources =
     stringify <|
@@ -21,6 +27,15 @@ decodersWithImports extra sources =
             <| sortBy .name
                 <| ParseModules.parseAll False sources 
         )
+
+encodersWithImports : List String -> String
+encodersWithImports sources =
+    stringify <|
+        ( map encoder
+            <| sortBy .name
+                <| ParseModules.parseAll True sources 
+        )
+
 
 --== Generate encoders/decoders from a single .elm file or a bunch of type definitions ==--
 

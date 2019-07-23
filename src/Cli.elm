@@ -21,7 +21,7 @@ main = Platform.worker {
 run : SourceCodes -> (Model, Cmd Msg)
 run sourceCodes =
   let
-    coders = Generate.decodersWithImports Types.Extra sourceCodes
+    coders = Generate.bothWithImports Types.Extra sourceCodes
   in
     ({}, done coders)
 
