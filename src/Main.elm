@@ -56,7 +56,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Both ->
-            ( { model | output = Generate.decodersWithImports model.extra [model.input] }, Cmd.none )
+            ( { model | output = Generate.both model.extra model.input, Cmd.none )
 
         Copy ->
             ( model, copyText (output model) )

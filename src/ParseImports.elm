@@ -7,8 +7,8 @@ import String exposing (split, trim)
 
 
 type Constructors
-    = Constructors (List String)
-    | DotDot -- unqualified import of a union type, e.g. import MyPackage exposing (MyType(...))
+    = Constructors (List String)  -- import MyPackage exposing (MyType(A, B, C))
+    | DotDot                      -- import MyPackage exposing (MyType(..))
 
 
 type Expose
@@ -18,9 +18,10 @@ type Expose
 
 
 type ExposeList
-    = Qualified (List Expose)
-    | Unqualified
-
+    = Qualified (List Expose) -- import Json exposing (Decoder)
+    | Unqualified             -- import Json exposing                              
+    | Unspecified             -- import Json
+    
 
 type alias Import =
     { fullName : String
@@ -83,7 +84,7 @@ importGrab match =
             Just
                 { fullName = a
                 , shortName = b
-                , exposes = Qualified []
+                , exposes = Unspecified
                 }
 
         (Just a) :: b :: (Just "..") :: cs ->
@@ -138,6 +139,9 @@ typeImports txt =
                     { imp | exposes = Qualified (List.filter isExposedType list) }
                 
                 Unqualified ->
+                    imp
+                    
+                Unspecified ->
                     imp
     in
     List.map filter (imports txt)

@@ -19,6 +19,7 @@ moduleRegex =
     "\\s*(?:port\\s+)?module\\s+([\\w|_]+)\\s+exposing\\s+\\((.+)\\)\\s*(?:\\w|$)"
 
 
+-- turns source code text into Module record
 parseModule : Bool -> String -> Maybe Module
 parseModule encoding source =
     let
@@ -36,14 +37,17 @@ parseModule encoding source =
         _ ->
             Nothing
 
-
+-- turns list of source codes into a list of all types that need encoding/decoding
 parseAll : Bool -> List String -> List TypeDef
 parseAll encoding sources =
+    -- "encoding" signals whether we'll need encoders or decoders
+    -- the two require different sets of typeDefs
     let        
         unique =
             ListXtra.uniqueBy .name
     in
     case sources of
+        -- the head of the list is the main module, the tail is the set of dependencies
         x :: ys ->
             case parseModule encoding x of
                 Just baseModule ->
@@ -65,7 +69,9 @@ parseAll encoding sources =
         [] ->
             []
     
-
+-- takes a typeDef, defined in homeModule, and looks for its definition in a list of modules (the dependencies)
+-- intended for cases where typeDef.theType = TypeImported a
+--- and cases where some component of typeDef (e.g. a field of a record) is an imported type
 pullImported : TypeDef -> Module -> List Module -> List TypeDef -> List TypeDef
 pullImported typeDef homeModule modulePool pulled =
     pullImportedHelp typeDef.theType homeModule modulePool pulled
@@ -144,9 +150,14 @@ pullImportedHelp thisType homeModule modulePool pulled =
             
 ---== Helpers
 
+-- looks for the type named "name", defined in a module named "homeModule",
+-- and search for its definition in modulePool, based on the imports in homeModule
 define : String -> Module -> List Module -> Maybe (Type, Module)
 define name homeModule modulePool =
     case List.reverse (String.split "." name) of
+        -- this "case of" is needed to recognize cases where a type name is
+        -- qualified, e.g. Json.Decode.Decoder
+        -- x = Decoder, y :: zs = [Decoder, Json]
         x :: y :: zs ->
             let
                 qualifier =
@@ -177,6 +188,7 @@ define name homeModule modulePool =
         [] ->
             Nothing
 
+-- checks if an import statement exposes typeName
 exposes : String -> Import -> Bool
 exposes typeName imp =
     let
@@ -193,13 +205,13 @@ exposes typeName imp =
         
     in  
     case imp.exposes of
-        Unqualified ->
-            False
-            
         Qualified list -> 
             List.foldl (||) False (List.map mapper list)
 
-
+        _ ->
+            False
+            
+-- fetches a type named "typeName" from module named "moduleName" in modulePool
 fetchType : String -> String -> List Module -> Maybe (Type, Module)
 fetchType typeName moduleName modulePool =
     let
@@ -221,7 +233,8 @@ fetchType typeName moduleName modulePool =
         [] ->
             Nothing
 
-     
+-- tries to fetch a type referred to as "qualifier.typeName" (e.g. Json.Decode.Decoder) from
+-- modulePool, based on the import statement "imp"
 lookForType : String -> String -> List Module -> Import -> Maybe (Type, Module)
 lookForType typeName qualifier modulePool imp =
     let
@@ -244,7 +257,7 @@ lookForType typeName qualifier modulePool imp =
                         False ->
                             Nothing        
                     
-                Unqualified ->
+                _ ->
                     fetchType typeName imp.fullName modulePool
             
         False ->
