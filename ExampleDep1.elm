@@ -1,5 +1,5 @@
 module ExampleDep1 exposing (Union)
 
-import ExampleDep2
+import ExampleDep2 as Dep2
 
-type Union = A ExampleDep2.AnotherRecord | B String
+type Union = A Dep2.AnotherRecord | B String
