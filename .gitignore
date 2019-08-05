@@ -1,2 +1,4 @@
-elm-stuff
+tests/VerifyExamples
+tests/VerifyExamples
+elm-stuff/
 src/Cli.js

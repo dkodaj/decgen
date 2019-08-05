@@ -24,7 +24,6 @@ type ExtraPackage
     = Extra  --Json.Decode.Extra
     | Pipeline --Json.Decode.Pipeline
 
-
 type alias RawType =
     { name : String
     , def : String

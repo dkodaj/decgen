@@ -5,6 +5,10 @@ module ParseType exposing
     , grabRawTypes
     , grabTypeDefs
     , typeNick
+
+    -- exposed for testing only
+    , typeOf
+    , extractHelp
     )
     
 import AnonymousTypes exposing (grabAnonymousTypes)
@@ -94,6 +98,14 @@ extractBasic encoding txt =
     map (detectExtendedRecord declared) declared
 
 
+
+{-| Don't know what this does
+
+    import Types exposing (RawType, Type(..), TypeDef)
+
+    extractHelp True "type Either a b = Left a | Right b"
+    --> ([{ name = "Either", theType = TypeUnion [("Left",[TypeImported "a"]),("Right",[TypeImported "b"])] }],[])
+-}
 extractHelp : Bool -> String -> ( List TypeDef, List TypeDef )
 extractHelp encoding txt =
     let
@@ -134,9 +146,21 @@ grabRawType submatches =
             Nothing
 
 
+{-| parse a type definition
+
+    import Types exposing (RawType, Type(..), TypeDef)
+
+    grabRawTypes "type Either a b = Left a | Right b"
+    --> [{ def = "Left a | Right b", extensible = True, name = "Either" }]
+-}
 grabRawTypes : String -> List RawType
 grabRawTypes txt =
-    removeNothings <| map grabRawType <| map .submatches <| regex typeRegex <| decomment <| removeStringLiterals txt
+    removeStringLiterals txt
+    |> decomment
+    |> regex typeRegex
+    |> map .submatches
+    |> map grabRawType
+    |> removeNothings
 
 
 typeRegex =
@@ -147,11 +171,21 @@ typeRegex =
 --== Recognize types ==--
 
 
+{-| parse a type definition without name
+
+    import Types exposing (RawType, Type(..), TypeDef)
+
+    typeOf False "List String" --> TypeList TypeString
+    typeOf False "MyType | String" --> TypeUnion [("MyType",[]),("String",[])]
+    typeOf False "MyType" --> TypeImported "MyType"
+    typeOf False "String" --> TypeString
+    typeOf False "{age : Int}" --> TypeRecord [{ name = "age", theType = TypeInt }]
+    typeOf True "{generic : generic}" --> TypeExtensible [{ name = "generic", theType = TypeImported "generic" }]
+    typeOf False "(String, Int)" --> TypeTuple [TypeString, TypeInt]
+    typeOf False "(String, Int, Bool)" --> TypeTuple [TypeString, TypeInt, TypeBool]
+-}
 typeOf : Bool -> String -> Type
 typeOf extensible def =
-    --  typeOf "List String" == TypeList TypeString
-    --  typeOf "MyType | String" == TypeUnion [TypeOpaque "MyType", TypeString]
-    --  typeOf "MyType" == TypeOpaque "MyType"
     let
         subType x =
             typeOf False x
