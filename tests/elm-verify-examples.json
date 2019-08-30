@@ -1,4 +1,4 @@
 {
   "root": "../src",
-  "tests": ["ParseType"]
+  "tests": ["ParseType", "Generate"]
 }

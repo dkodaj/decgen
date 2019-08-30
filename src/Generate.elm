@@ -15,6 +15,8 @@ import Types exposing (ExtraPackage)
     -- imported by the head, or by something imported by the head etc.
 
 
+
+
 bothWithImports : ExtraPackage -> List String -> String
 bothWithImports extra txt =
     decodersWithImports extra txt ++ "\n\n" ++ encodersWithImports txt
@@ -39,6 +41,34 @@ encodersWithImports sources =
 
 --== Generate encoders/decoders from a single .elm file or a bunch of type definitions ==--
 
+{-| Generete encoders/decoders for some source code
+
+    import Types exposing (ExtraPackage(..))
+
+    both Pipeline "type alias TunaOrTofu = Tuna | Tofu"
+    --> """decodeTunaOrTofu =
+    -->         let
+    -->            recover x =
+    -->               case x of
+    -->                  \"Tuna\"->
+    -->                     Decode.succeed Tuna
+    -->                  \"Tofu\"->
+    -->                     Decode.succeed Tofu
+    -->                  other->
+    -->                     Decode.fail <| \"Unknown constructor for type TunaOrTofu: \" ++ other
+    -->         in
+    -->            Decode.string |> Decode.andThen recover\n
+    -->     encodeTunaOrTofu a =
+    -->         case a of
+    -->            Tuna ->
+    -->               Encode.string \"Tuna\"
+    -->            Tofu ->
+    -->               Encode.string \"Tofu\""""
+    -->         |> String.replace "                     " ""
+    -->         |> String.replace "                    " ""
+
+Note that the last two lines are to make the expected outcome more readable
+-}
 both : ExtraPackage -> String -> String
 both extra txt =
     decoders extra txt ++ "\n\n" ++ encoders txt

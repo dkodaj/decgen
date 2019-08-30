@@ -322,7 +322,13 @@ encoderUnion xs =
 
 encoderUnionSimple : List ( String, List Type ) -> String
 encoderUnionSimple xs =
-    "Encode.string <| toString a"
+    let
+        encodeConstructor ( a, ys ) =
+            tab 1 (a ++ " ->" ++ "\n") ++ tabLines 2 (encoderProduct False False ( a, ys ))
+    in
+    join "\n" <|
+        [ "case a of" ]
+            ++ map encodeConstructor xs
 
 
 encoderUnionComplex : List ( String, List Type ) -> String
