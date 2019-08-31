@@ -64,8 +64,18 @@ encodersWithImports sources =
     -->               Encode.string \"Tuna\"
     -->            Tofu ->
     -->               Encode.string \"Tofu\""""
-    -->         |> String.replace "                     " ""
-    -->         |> String.replace "                    " ""
+    -->         |> String.replace "                     " "" -- adjust to formatting
+    -->         |> String.replace "                    " "" -- adjust to formatting
+
+    both Pipeline "type alias QualifiedExample = SomeModule.SomeType"
+
+    --> """decodeQualifiedExample =
+    -->         SomeModule.decodeSomeType\n
+    -->    encodeQualifiedExample a =
+    -->         SomeModule.encodeSomeType a"""
+    -->         |> String.replace "                     " "" -- adjust to formatting
+    -->         |> String.replace "                    " "" -- adjust to formatting
+    -->         |> String.replace "                   " "" -- adjust to formatting
 
 Note that the last two lines are to make the expected outcome more readable
 -}

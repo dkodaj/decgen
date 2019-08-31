@@ -104,8 +104,15 @@ encoderHelp topLevel rawName a =
         TypeFloat ->
             maybeAppend <| "Encode.float"
 
-        TypeImported b ->
-            maybeAppend <| "encode" ++ removeColons b
+        TypeImported importedTypeReference ->
+            case String.split "." importedTypeReference |> List.reverse of
+                typeName :: reversedPath ->
+                    let
+                        path = String.join "." (List.reverse reversedPath)
+                    in
+                    path ++ ".encode" ++ typeName ++ " a"
+                _ ->
+                    "encode" ++ name ++ " a ="
 
         TypeInt ->
             maybeAppend <| "Encode.int"

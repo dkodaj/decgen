@@ -96,8 +96,16 @@ decoderHelp topLevel rawName a extra =
         TypeFloat ->
             "Decode.float"
 
-        TypeImported b ->
-            "decode" ++ removeColons b
+        TypeImported importedTypeReference ->
+            case String.split "." importedTypeReference |> List.reverse of
+                typeName :: reversedPath ->
+                    let
+                        path = String.join "." (List.reverse reversedPath)
+                    in
+                    path ++ ".decode" ++ typeName
+                _ ->
+                    "decode" ++ name
+
 
         TypeInt ->
             "Decode.int"
