@@ -1,7 +1,40 @@
-module Destructuring exposing (bracket, bracketCommas, bracketIfSpaced, capitalize, civilize, clean, components, componentsHelp, debracket, decomment, derecord, derecordHelp, detuple, detupleHelp, deunion, deunionHelp, dropWord, inBrackets, inCurly, inThese, occurs, outside, outsideBrackets, outsideCurly, quote, remove, removeColons, removeStringLiterals, singleLine, singleSpace, stringify, tab, tabLines, toField)
+module Destructuring exposing
+    ( bracket
+    , bracketCommas
+    , bracketIfSpaced
+    , bracketed
+    , capitalize
+    , civilize
+    , components
+    , debracket
+    , decomment
+    , derecord
+    , detuple
+    , deunion
+    , dropWord
+    , inBrackets
+    , inCurly
+    , inThese
+    , occurs
+    , outside
+    , outsideBrackets
+    , outsideCurly
+    , quote
+    , remove
+    , removeColons
+    , removeNothings
+    , removeStringLiterals
+    , regex
+    , singleLine
+    , singleSpace
+    , stringify
+    , tab
+    , tabLines
+    , toField
+    )
 
 import List exposing (concat, map, map2)
-import Regex
+import Regex exposing (Match)
 import String exposing (dropLeft, dropRight, indices, join, left, length, repeat, right, split, toUpper, trim, words)
 
 
@@ -20,7 +53,7 @@ derecord txt =
 
         Just x ->
             let
-                y = 
+                y =
                     --clean up extensible records:
                     -- { a | email: String }  --> { email: String }
                     trim <| remove "^.*\\|" x
@@ -106,7 +139,7 @@ detupleHelp idxs txt elements =
 
 deunion : String -> List ( String, List String )
 deunion txt =
-    clean <| map deunionHelp <| split "|" <| singleSpace txt
+    removeNothings <| map deunionHelp <| split "|" <| singleSpace txt
 
 
 deunionHelp : String -> Maybe ( String, List String )
@@ -125,6 +158,10 @@ deunionHelp txt =
 
 bracket txt =
     "(" ++ txt ++ ")"
+
+
+bracketed txt =
+    left 1 txt == "(" && right 1 txt == ")"
 
 
 bracketCommas : List String -> List String
@@ -162,21 +199,6 @@ civilize txt =
             remove " "
     in
     to_ <| deleteSpace txt
-
-
-clean : List (Maybe a) -> List a
-clean xs =
-    --clean [Just a, Nothing, Just b] == [a, b]
-    let
-        dropJust a =
-            case a of
-                Nothing ->
-                    []
-
-                Just b ->
-                    [ b ]
-    in
-    concat <| map dropJust xs
 
 
 components : String -> List String
@@ -279,6 +301,15 @@ quote txt =
     "\"" ++ txt ++ "\""
 
 
+regex : String -> String -> List Match
+regex regexStr txt =
+    case Regex.fromString regexStr  of
+        Nothing ->
+            []
+
+        Just regexDef ->
+            Regex.find regexDef txt
+
 remove a b =
     replace a (\_ -> "") b
 
@@ -287,18 +318,32 @@ removeColons txt =
     remove "\\." txt
 
 
-replace regexStr fun txt =
-    case Regex.fromString regexStr of
-        Nothing ->
-            txt
+removeNothings : List (Maybe a) -> List a
+removeNothings xs =
+    --clean [Just a, Nothing, Just b] == [a, b]
+    let
+        dropJust a =
+            case a of
+                Nothing ->
+                    []
 
-        Just regex ->
-            Regex.replace regex fun txt
+                Just b ->
+                    [ b ]
+    in
+    concat <| map dropJust xs
 
 
 removeStringLiterals txt =
     remove "\".*?\"" <| remove "\"\"\"(?:\\n|.)+?\"\"\"" txt
 
+
+replace regexStr fun txt =
+    case Regex.fromString regexStr of
+        Nothing ->
+            txt
+
+        Just regexDef ->
+            Regex.replace regexDef fun txt
 
 singleLine txt =
     singleSpace <| replace "[\\r\\n]" (\a -> " ") txt
@@ -314,7 +359,7 @@ stringify xs =
 
 
 tab n txt =
-    repeat (3 * n) " " ++ txt
+    repeat (4 * n) " " ++ txt
 
 
 tabLines n txt =

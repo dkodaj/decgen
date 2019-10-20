@@ -2,11 +2,12 @@ port module GeneratePage exposing (main)
 
 import Browser
 import Generate
-import Html exposing (node, text)
+import Html exposing (Html, node, text)
 import Html.Attributes as Attr
 import Html.Events as Events
 import Json.Decode as Dec
 import Types exposing (ExtraPackage(..))
+
 
 type alias Model =
     { input : String
@@ -14,6 +15,7 @@ type alias Model =
     , showImport : Bool
     , extra : ExtraPackage
     }
+
 
 type Msg
     = Both
@@ -45,10 +47,12 @@ init _ =
     )
 
 
+subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Both ->
@@ -73,6 +77,7 @@ update msg model =
             ( { model | showImport = not model.showImport }, Cmd.none )
 
 
+view : Model -> Html Msg
 view model =
     node "div"
         []
@@ -192,7 +197,7 @@ controlPanel model =
            , checkbox " Show imports" model.showImport (Events.onClick ToggleShowImport)
            , break
            , break
-           , div1 "" ( text "For large records, use" )
+           , div1 "" (text "For large records, use")
            , select
                 "is-success is-small"
                 "mono"
@@ -203,15 +208,17 @@ controlPanel model =
 
 decodeSelect =
     let
-      recover x =
-         case x of
-            "Json.Decode.Pipeline"->
-               Dec.succeed Pipeline
-            "Json.Extra"->
-               Dec.succeed Extra
-            other->
-               Dec.fail <| "Unknown constructor for type ExtraPackage: " ++ other
-   in
+        recover x =
+            case x of
+                "Json.Decode.Pipeline" ->
+                    Dec.succeed Pipeline
+
+                "Json.Extra" ->
+                    Dec.succeed Extra
+
+                other ->
+                    Dec.fail <| "Unknown constructor for type ExtraPackage: " ++ other
+    in
     Dec.map ToggleExtraPackage
         (Dec.at [ "target", "value" ] Dec.string |> Dec.andThen recover)
 
@@ -224,8 +231,7 @@ div1 clss child =
     node "div" [ Attr.class clss ] [ child ]
 
 
---Font Awesome icon
-fa clss id =
+fa clss id = --Font Awesome icon
     Html.span
         [ Attr.class ("icon " ++ clss) ]
         [ node "i"
@@ -258,9 +264,7 @@ level clss left center right =
         )
 
 
-
---non-breaking space
-nbsp =
+nbsp = --non-breaking space
     String.fromChar <| Char.fromCode 160 --> decimal unicode
 
 
@@ -305,6 +309,5 @@ textArea plc clss attrs numRows val =
 
 --== Ports ==--
 --from Elm to JavaScript
-
 
 port copyText : String -> Cmd msg

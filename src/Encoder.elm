@@ -1,10 +1,10 @@
-module Encoder exposing (encoder)
+module Encoder exposing (encodeMaybe, encoder)
 
-import Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, tab, tabLines)
+import Destructuring exposing (bracketCommas, bracketIfSpaced, capitalize, quote, removeColons, tab, tabLines)
 import List exposing (filter, indexedMap, length, map, map2, range)
+import ParseType exposing (typeNick)
 import String exposing (contains, dropRight, join, split)
-import TypeExtract exposing (typeNick)
-import Types exposing (Type(..), TypeDef, coreTypeForEncoding)
+import Types exposing (Type(..), TypeDef, coreType)
 
 
 encoder : TypeDef -> List String
@@ -16,19 +16,23 @@ encoder typeDef =
         encoderName =
             case typeDef.theType of
                 TypeTuple xs ->
-                    "encode" ++ typeDef.name ++ " (" ++ varListComma xs ++ ") ="
+                    "encode" ++ name ++ " (" ++ varListComma xs ++ ") ="
 
                 TypeProduct ( b, c ) ->
                     case c of
                         [] ->
-                            "encode" ++ typeDef.name ++ " a ="
+                            "encode" ++ name ++ " a ="
 
                         _ ->
-                            "encode" ++ typeDef.name ++ " (" ++ b ++ " " ++ varList c ++ ") ="
+                            "encode" ++ name ++ " (" ++ b ++ " " ++ varList c ++ ") ="
 
                 _ ->
-                    "encode" ++ typeDef.name ++ " a ="
+                    "encode" ++ name ++ " a ="
 
+        name =
+            removeColons typeDef.name
+
+        --turn "Vec3.vec3" into "Vec3vec3"
         vars a =
             map var <| range 1 (length a)
 
@@ -42,22 +46,25 @@ encoder typeDef =
 
 
 encoderHelp : Bool -> String -> Type -> String
-encoderHelp topLevel name a =
+encoderHelp topLevel rawName a =
     let
+        name =
+            removeColons rawName
+
         maybeAppend txt =
             case topLevel of
                 True ->
-                    bracketIfSpaced txt ++ " a"
+                    txt ++ " a"
 
                 False ->
                     txt
 
         recurseOn x y =
-            x ++ " << " ++ (bracketIfSpaced <| encoderHelp False "" y)
+            x ++ (bracketIfSpaced <| encoderHelp False "" y)
     in
     case a of
         TypeArray b ->
-            maybeAppend <| recurseOn "Encode.array" b
+            maybeAppend <| recurseOn "Encode.array " b
 
         TypeBool ->
             maybeAppend <| "Encode.bool"
@@ -77,8 +84,9 @@ encoderHelp topLevel name a =
 
         TypeError b ->
             maybeAppend <| b
-            
-        TypeExtendedRecord b -> --same as TypeRecord
+
+        TypeExtendedRecord b ->
+            --same as TypeRecord
             case topLevel of
                 True ->
                     encoderRecord b
@@ -90,34 +98,24 @@ encoderHelp topLevel name a =
 
                         _ ->
                             "encode" ++ name
-         
+
         TypeExtensible b ->
             maybeAppend <| "<< Extensible records cannot be encoded >>"
 
         TypeFloat ->
             maybeAppend <| "Encode.float"
 
+        TypeImported b ->
+            maybeAppend <| "encode" ++ removeColons b
+
         TypeInt ->
             maybeAppend <| "Encode.int"
 
         TypeList b ->
-            maybeAppend <| recurseOn "Encode.list" b
+            maybeAppend <| recurseOn "Encode.list " b
 
         TypeMaybe b ->
-            case topLevel of
-                True ->
-                    encoderMaybe b
-
-                False ->
-                    case name of
-                        "" ->
-                            "encode" ++ typeNick a
-
-                        _ ->
-                            "encode" ++ name
-
-        TypeOpaque b ->
-            maybeAppend <| "encode" ++ b
+            maybeAppend <| recurseOn "encodeMaybe " b
 
         TypeProduct b ->
             case topLevel of
@@ -186,28 +184,28 @@ encoderDict : String -> ( Type, Type ) -> String
 encoderDict name ( b, c ) =
     let
         subEncoderName =
-            "encode" ++ name ++ "Tuple"
+            "encode" ++ removeColons name ++ "Tuple"
     in
     join "\n" <|
         [ "let"
         , tab 1 <| subEncoderName ++ " (a1,a2) ="
         , tab 2 "Encode.object"
-        , tab 3 <| "[ (\"A1\", " ++ (bracketIfSpaced <| encoderHelp False "" b) ++ " a1)"
-        , tab 3 <| ", (\"A2\", " ++ (bracketIfSpaced <| encoderHelp False "" c) ++ " a2) ]"
+        , tab 3 <| "[ (\"A1\", " ++ encoderHelp False "" b ++ " a1)"
+        , tab 3 <| ", (\"A2\", " ++ encoderHelp False "" c ++ " a2) ]"
         , "in"
-        , tab 1 <| "(Encode.list " ++ subEncoderName ++ ") (Dict.toList a)"
+        , tab 1 <| "Encode.list " ++ subEncoderName ++ " (Dict.toList a)"
         ]
 
 
-encoderMaybe : Type -> String
-encoderMaybe x =
-    join "\n" <|
-        [ "case a of"
-        , tab 1 "Just b->"
-        , tab 2 <| (bracketIfSpaced <| encoderHelp False "" x) ++ " b"
-        , tab 1 "Nothing->"
-        , tab 2 "Encode.null"
-        ]
+encodeMaybe : List String
+encodeMaybe =
+    [ "encodeMaybe f a = "
+    , tab 1 "case a of"
+    , tab 2 "Just b ->"
+    , tab 3 "f b"
+    , tab 2 "Nothing ->"
+    , tab 3 "Encode.null"
+    ]
 
 
 encoderProduct : Bool -> Bool -> ( String, List Type ) -> String
@@ -227,12 +225,12 @@ encoderProduct productType addConstructor ( constructor, subTypes ) =
                 fullEncoder =
                     dropRight 2 <| encoderHelp True "" a
             in
-            case coreTypeForEncoding a of
+            case coreType a of
                 True ->
                     fullEncoder
 
                 False ->
-                    bracketIfSpaced <| encoderHelp False "" a
+                    encoderHelp False "" a
 
         constrEncode =
             case addConstructor of
@@ -273,11 +271,10 @@ encoderRecord : List TypeDef -> String
 encoderRecord xs =
     let
         fieldEncode x =
-            "(" ++ (quote x.name) ++ ", " ++ subEncoder x.theType ++ " a." ++ x.name ++ ")"
+            "(" ++ quote (removeColons x.name) ++ ", " ++ subEncoder x.theType ++ " a." ++ removeColons x.name ++ ")"
 
         subEncoder x =
-            bracketIfSpaced <| encoderHelp False "" x
-
+            encoderHelp False "" x
     in
     join "\n" <|
         [ "Encode.object" ]
@@ -289,7 +286,7 @@ encoderTuple : List Type -> String
 encoderTuple xs =
     let
         encodeElement ( idx, elem ) =
-            "(\"" ++ varUpper (idx + 1) ++ "\", " ++ (bracketIfSpaced <| encoderHelp False "" elem) ++ " " ++ var (idx + 1) ++ ")"
+            "(\"" ++ varUpper (idx + 1) ++ "\", " ++ encoderHelp False "" elem ++ " " ++ var (idx + 1) ++ ")"
     in
     join "\n" <|
         [ "Encode.object" ]

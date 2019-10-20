@@ -1,9 +1,9 @@
 module Decoder exposing (decoder)
 
-import Destructuring exposing (bracket, bracketIfSpaced, capitalize, quote, tab, tabLines)
+import Destructuring exposing (bracket, bracketIfSpaced, capitalize, quote, removeColons, tab, tabLines)
 import List exposing (concat, filter, indexedMap, length, map, map2, range)
+import ParseType exposing (typeNick)
 import String exposing (join, split)
-import TypeExtract exposing (typeNick)
 import Types exposing (ExtraPackage(..), Type(..), TypeDef, coreType)
 
 
@@ -22,16 +22,19 @@ decoder extra typeDef =
             split "\n" <| decoderHelp True typeDef.name typeDef.theType extra
 
         decoderName =
-            "decode" ++ typeDef.name ++ " ="
+            "decode" ++ removeColons typeDef.name ++ " ="
     in
     decoderName :: decoderBody
 
 
 decoderHelp : Bool -> String -> Type -> ExtraPackage -> String
-decoderHelp topLevel name a extra =
+decoderHelp topLevel rawName a extra =
     let
         recurseOn x y =
             x ++ " " ++ (bracketIfSpaced <| decoderHelp False "" y extra)
+            
+        name =
+            removeColons rawName
     in
     case a of
         TypeArray b ->
@@ -68,7 +71,7 @@ decoderHelp topLevel name a extra =
 
         TypeError b ->
             b
-            
+
         TypeExtendedRecord b ->
             case topLevel of
                 True ->
@@ -77,7 +80,7 @@ decoderHelp topLevel name a extra =
                             decoderRecord (typeNick a) b extra
 
                         _ ->
-                            decoderRecord (name++"Extended") b extra
+                            decoderRecord (name ++ "Extended") b extra
 
                 False ->
                     case name of
@@ -86,12 +89,15 @@ decoderHelp topLevel name a extra =
 
                         _ ->
                             "decode" ++ name ++ "Extended"
-            
+
         TypeExtensible _ ->
             "<< Extensible records are not decoded. >>"
 
         TypeFloat ->
             "Decode.float"
+
+        TypeImported b ->
+            "decode" ++ removeColons b
 
         TypeInt ->
             "Decode.int"
@@ -101,9 +107,6 @@ decoderHelp topLevel name a extra =
 
         TypeMaybe b ->
             recurseOn "Decode.maybe" b
-
-        TypeOpaque b ->
-            "decode" ++ b
 
         TypeProduct b ->
             case topLevel of
@@ -232,7 +235,7 @@ decoderRecord name xs extra =
         [ mapper fieldNum
         , tab 1 name
         ]
-        ++ ( map (tab 2) <| map fieldDecode xs )
+            ++ (map (tab 2) <| map fieldDecode xs)
 
 
 decoderTuple : List Type -> ExtraPackage -> String
@@ -283,7 +286,10 @@ decoderUnion name xs extra =
             decoderUnionComplex name xs extra
 
 
+
 --e.g. type Color = Red | Green | Blue
+
+
 decoderUnionSimple : String -> List ( String, List Type ) -> String
 decoderUnionSimple name xs =
     let
@@ -297,7 +303,11 @@ decoderUnionSimple name xs =
                 ++ [ tab 3 "other->", tab 4 "Decode.fail <| \"Unknown constructor for type " ++ name ++ ": \" ++ other" ]
                 ++ [ "in", tab 1 "Decode.string |> Decode.andThen recover" ]
 
+
+
 --e.g. type Ammo = Bullets Int | Napalm Float
+
+
 decoderUnionComplex : String -> List ( String, List Type ) -> ExtraPackage -> String
 decoderUnionComplex name xs extra =
     let
@@ -305,8 +315,8 @@ decoderUnionComplex name xs extra =
             quote constructor ++ " ->\n" ++ (tabLines 1 <| decoderProduct False ( constructor, fields ) extra)
     in
     join "\n" <|
-        [ tab 1 <| "Decode.field \"Constructor\" Decode.string |> Decode.andThen decode" ++ name ++ "Help" ++ "\n"
-        , "decode" ++ name ++ "Help constructor ="
+        [ tab 1 <| "Decode.field \"Constructor\" Decode.string |> Decode.andThen decode" ++ removeColons name ++ "Help" ++ "\n"
+        , "decode" ++ removeColons name ++ "Help constructor ="
         , tab 1 "case constructor of"
         ]
             ++ (map (tabLines 2) <| map decodeConstructor xs)
@@ -323,11 +333,12 @@ field n name dec extra =
 
         False ->
             case extra of
-                Extra->
-                   "|> Extra.andMap Decode.field(" ++ name ++ " " ++ dec ++")"
-                
-                Pipeline->
+                Extra ->
+                    "|> Extra.andMap Decode.field(" ++ name ++ " " ++ dec ++ ")"
+
+                Pipeline ->
                     "|> Pipeline.required " ++ name ++ " " ++ dec
+
 
 mapper : Int -> String
 mapper n =

@@ -9,10 +9,10 @@ type Type
     | TypeExtendedRecord (List TypeDef) --record defined using an extensible one
     | TypeExtensible (List TypeDef) --extensible record
     | TypeFloat
+    | TypeImported String --type not core and not defined in the input
     | TypeInt
     | TypeList Type
     | TypeMaybe Type
-    | TypeOpaque String --type not core and not defined in the input
     | TypeProduct ( String, List Type )
     | TypeRecord (List TypeDef)
     | TypeString
@@ -23,7 +23,6 @@ type Type
 type ExtraPackage
     = Extra  --Json.Decode.Extra
     | Pipeline --Json.Decode.Pipeline
-
 
 type alias RawType =
     { name : String
@@ -70,15 +69,6 @@ coreType this =
         _ ->
             simpleType this
 
-
-coreTypeForEncoding : Type -> Bool
-coreTypeForEncoding this =
-    case this of
-        TypeMaybe _ ->
-            False
-
-        _ ->
-            coreType this
 
 isEmptyRecord : TypeDef -> Bool
 isEmptyRecord this =

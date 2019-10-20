@@ -6,18 +6,6 @@ Builds JSON decoders and encoders for your Elm types.
 
 Copy/paste your type definitions into the [live version](https://dkodaj.github.io/decgen).
 
-## Usage: command line
+## Cli version
 
-Clone the repo and build Cli.elm:
-
-```
-$ git clone https://github.com/dkodaj/decgen
-$ cd decgen
-$ elm make src/Cli.elm --output src/Cli.js --optimize
-```
-
-Generate decoders for Example.elm:
-
-```
-$ node src/decgen.js Example.elm
-```
+Check out [FranzSkuffka](https://github.com/FranzSkuffka/elm-coder-generator)'s command line tool.

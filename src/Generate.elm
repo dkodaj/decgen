@@ -1,14 +1,43 @@
-module Generate exposing (both, decoders, encoders, imports)
+module Generate exposing (both, bothWithImports, decoders, encoders, imports)
 
 import Decoder exposing (decoder)
 import Destructuring exposing (bracket, stringify)
-import Encoder exposing (encoder)
-import List exposing (concat, filter, map, sortBy)
+import Encoder exposing (encoder, encodeMaybe)
+import List exposing (concat, filter, foldl, map, sortBy)
+import ParseModules
+import ParseType exposing (extractAll, extractAllWithDefs)
 import String exposing (contains, join, trim)
-import TypeExtract exposing (extractAll, extractAllWithDefs)
 import Types exposing (ExtraPackage)
 
-            
+--== Generate encoders/decoders from a list of .elm files ==--
+    -- the head of the list is the base module, the rest are its depencies
+    -- types defined in the tail are only decoded/encoded if they are
+    -- imported by the head, or by something imported by the head etc.
+
+
+bothWithImports : ExtraPackage -> List String -> String
+bothWithImports extra txt =
+    decodersWithImports extra txt ++ "\n\n" ++ encodersWithImports txt
+
+
+decodersWithImports : ExtraPackage -> List String -> String
+decodersWithImports extra sources =
+    stringify <|
+        ( map (decoder extra)
+            <| sortBy .name
+                <| ParseModules.parseAll sources 
+        )
+
+encodersWithImports : List String -> String
+encodersWithImports sources =
+    stringify <|
+        ( map encoder
+            <| sortBy .name
+                <| ParseModules.parseAll sources 
+        )
+
+
+--== Generate encoders/decoders from a single .elm file or a bunch of type definitions ==--
 
 both : ExtraPackage -> String -> String
 both extra txt =
@@ -19,22 +48,51 @@ decoders : ExtraPackage -> String -> String
 decoders extra txt =
     let
         ( allTypes, anonymousDefs ) =
-            extractAllWithDefs False txt
+            extractAllWithDefs txt
     in
     stringify <|
         anonymousDefs
-            ++ (map (decoder extra) <| sortBy .name allTypes)
+            ++ (map (decoder extra)
+                <| sortBy .name allTypes)
 
 
 encoders : String -> String
 encoders txt =
     let
         allTypes =
-            extractAll True txt
+            extractAll txt
+            
+        encodersWithoutMaybe =
+            map encoder allTypes
+            
+        containsMaybe =
+            foldl (||) False
+                <| map (contains "encodeMaybe ")
+                    <| concat encodersWithoutMaybe                
+               
+        maybeMaybe =
+            case containsMaybe of
+                True ->
+                    encodeMaybe
+                    
+                False ->
+                    [ ]
+                    
+        firstLine xs =
+            case xs of
+                x :: _ ->
+                    x
+                    
+                [] ->
+                    ""     
+                    
+        empty xs =
+            xs == []               
     in
-    stringify <|
-        (map encoder <| sortBy .name allTypes)
-
+    stringify
+        <| filter (not << empty)
+            <| sortBy firstLine
+                <| maybeMaybe :: encodersWithoutMaybe
 
 
 --== Decoder/encoder imports ==--
@@ -75,7 +133,7 @@ imports output =
 
         importDec =
             maybe "Json.Decode" (Just "Decode")
-            
+
         importDecExtra =
             maybe "Json.Decode.Extra" (Just "Extra")
 

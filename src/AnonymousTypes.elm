@@ -1,7 +1,7 @@
 module AnonymousTypes exposing (grabAnonymousTypes)
 
 import List exposing (any, concat, filter, foldr, map)
-import Types exposing (Type(..), TypeDef, coreType, coreTypeForEncoding)
+import Types exposing (Type(..), TypeDef, coreType)
 
 
 
@@ -63,6 +63,9 @@ anonymousHelp topLevel a xs =
             xs
 
         TypeFloat ->
+            xs            
+        
+        TypeImported b ->
             xs
 
         TypeInt ->
@@ -78,9 +81,6 @@ anonymousHelp topLevel a xs =
 
                 False ->
                     anonymousHelp False b (TypeMaybe b :: xs)
-
-        TypeOpaque b ->
-            xs
 
         TypeProduct ( b, c ) ->
             case c of
@@ -125,8 +125,8 @@ anonymousHelp topLevel a xs =
             (foldr (<<) identity <| map (anonymousHelp False) typeList) xs
 
 
-grabAnonymousTypes : Bool -> List TypeDef -> List Type
-grabAnonymousTypes encoding typeDefs =
+grabAnonymousTypes : List TypeDef -> List Type
+grabAnonymousTypes typeDefs =
     let
         notMaybe a =
             case a of
@@ -137,12 +137,7 @@ grabAnonymousTypes encoding typeDefs =
                     True
 
         typeFilter =
-            case encoding of
-                True ->
-                    filter (not << coreTypeForEncoding)
-
-                False ->
-                    filter notMaybe << filter (not << coreType)
+            filter notMaybe << filter (not << coreType)
     in
     typeFilter <| unique <| concat <| map anonymous typeDefs
 
