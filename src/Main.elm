@@ -1,4 +1,4 @@
-port module GeneratePage exposing (main)
+port module Main exposing (main)
 
 import Browser
 import Generate

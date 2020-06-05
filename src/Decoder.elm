@@ -288,8 +288,6 @@ decoderUnion name xs extra =
 
 
 --e.g. type Color = Red | Green | Blue
-
-
 decoderUnionSimple : String -> List ( String, List Type ) -> String
 decoderUnionSimple name xs =
     let
@@ -306,8 +304,6 @@ decoderUnionSimple name xs =
 
 
 --e.g. type Ammo = Bullets Int | Napalm Float
-
-
 decoderUnionComplex : String -> List ( String, List Type ) -> ExtraPackage -> String
 decoderUnionComplex name xs extra =
     let

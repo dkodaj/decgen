@@ -31,8 +31,8 @@ encoder typeDef =
 
         name =
             removeColons typeDef.name
+            --turn "Vec3.vec3" into "Vec3vec3"
 
-        --turn "Vec3.vec3" into "Vec3vec3"
         vars a =
             map var <| range 1 (length a)
 
@@ -162,7 +162,7 @@ encoderHelp topLevel rawName a =
         TypeUnion b ->
             case topLevel of
                 True ->
-                    encoderUnion b
+                    encoderUnion name b
 
                 False ->
                     case name of
@@ -294,8 +294,8 @@ encoderTuple xs =
             ++ [ tab 1 "]" ]
 
 
-encoderUnion : List ( String, List Type ) -> String
-encoderUnion xs =
+encoderUnion : String -> List ( String, List Type ) -> String
+encoderUnion name xs =
     let
         complexConstructor ( a, b ) =
             b /= []
@@ -305,30 +305,41 @@ encoderUnion xs =
     in
     case simpleUnion of
         True ->
-            encoderUnionSimple xs
+            encoderUnionSimple name xs
 
         False ->
-            encoderUnionComplex xs
+            encoderUnionComplex name xs
 
 
-encoderUnionSimple : List ( String, List Type ) -> String
-encoderUnionSimple xs =
-    "Encode.string <| toString a"
-
-
-encoderUnionComplex : List ( String, List Type ) -> String
-encoderUnionComplex xs =
+--e.g. type Color = Red | Green | Blue
+encoderUnionSimple : String -> List ( String, List Type ) -> String
+encoderUnionSimple name xs =
     let
-        varList ys =
-            join " " <| map var <| range 1 (length ys)
+        constructor ( a, b ) =
+            (a ++ "-> " ++ quote a)
+    in
+    join "\n" <|        
+        [ tab 1 "case a of" ] ++
+        ( map (tabLines 2) <| map constructor xs )
 
-        encodeConstructor ( a, ys ) =
-            tab 1 (a ++ " " ++ varList ys ++ "->" ++ "\n") ++ tabLines 2 (encoderProduct False True ( a, ys ))
+
+
+--e.g. type Ammo = Bullets Int | Napalm Float
+encoderUnionComplex : String -> List ( String, List Type ) -> String
+encoderUnionComplex name xs =
+    let
+        varList a =
+            join " " (vars a)
+
+        vars a =
+            map var <| range 1 (length a)
+
+        encodeConstructor ( constructor, fields ) =
+            constructor ++ " " ++ varList fields ++ " ->\n" ++ (tabLines 1 <| encoderProduct False True ( constructor, fields ))
     in
     join "\n" <|
-        [ "case a of" ]
-            ++ map encodeConstructor xs
-
+        [tab 1 "case constructor of"]
+        ++ (map (tabLines 2) <| map encodeConstructor xs)
 
 var n =
     "a" ++ String.fromInt n

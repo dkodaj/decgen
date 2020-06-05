@@ -18,7 +18,7 @@
 	<script src="Main.js"></script>
 	<script>
 
-    	let app = Elm.GeneratePage.init({node: document.getElementById('elm')});
+    	let app = Elm.Main.init({node: document.getElementById('elm')});
 
     	app.ports.copyText.subscribe(function(txt){
 		  var hidden = document.createElement("textarea");
