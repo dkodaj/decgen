@@ -338,7 +338,7 @@ encoderUnionComplex name xs =
             constructor ++ " " ++ varList fields ++ " ->\n" ++ (tabLines 1 <| encoderProduct False True ( constructor, fields ))
     in
     join "\n" <|
-        ["case a.constructor of"]
+        ["case a of"]
         ++ (map (tabLines 1) <| map encodeConstructor xs)
 
 var n =
