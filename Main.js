@@ -7490,12 +7490,10 @@ var $author$project$Encoder$encoderUnionComplex = F2(
 			'\n',
 			_Utils_ap(
 				_List_fromArray(
-					[
-						A2($author$project$Destructuring$tab, 1, 'case constructor of')
-					]),
+					['case a.constructor of']),
 				A2(
 					$elm$core$List$map,
-					$author$project$Destructuring$tabLines(2),
+					$author$project$Destructuring$tabLines(1),
 					A2($elm$core$List$map, encodeConstructor, xs))));
 	});
 var $author$project$Encoder$encoder = function (typeDef) {
