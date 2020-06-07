@@ -7490,7 +7490,7 @@ var $author$project$Encoder$encoderUnionComplex = F2(
 			'\n',
 			_Utils_ap(
 				_List_fromArray(
-					['case a.constructor of']),
+					['case a of']),
 				A2(
 					$elm$core$List$map,
 					$author$project$Destructuring$tabLines(1),
