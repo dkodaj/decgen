@@ -98,14 +98,6 @@ extractBasic txt =
     map (detectExtendedRecord declared) declared
 
 
-
-{-| Don't know what this does
-
-    import Types exposing (RawType, Type(..), TypeDef)
-
-    extractHelp True "type Either a b = Left a | Right b"
-    --> ([{ name = "Either", theType = TypeUnion [("Left",[TypeImported "a"]),("Right",[TypeImported "b"])] }],[])
--}
 extractHelp : String -> ( List TypeDef, List TypeDef )
 extractHelp txt =
     let
@@ -146,13 +138,6 @@ grabRawType submatches =
             Nothing
 
 
-{-| parse a type definition
-
-    import Types exposing (RawType, Type(..), TypeDef)
-
-    grabRawTypes "type Either a b = Left a | Right b"
-    --> [{ def = "Left a | Right b", extensible = True, name = "Either" }]
--}
 grabRawTypes : String -> List RawType
 grabRawTypes txt =
     removeStringLiterals txt

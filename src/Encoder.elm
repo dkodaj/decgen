@@ -338,8 +338,8 @@ encoderUnionComplex name xs =
             constructor ++ " " ++ varList fields ++ " ->\n" ++ (tabLines 1 <| encoderProduct False True ( constructor, fields ))
     in
     join "\n" <|
-        [tab 1 "case constructor of"]
-        ++ (map (tabLines 2) <| map encodeConstructor xs)
+        ["case a.constructor of"]
+        ++ (map (tabLines 1) <| map encodeConstructor xs)
 
 var n =
     "a" ++ String.fromInt n
