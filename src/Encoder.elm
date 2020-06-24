@@ -318,9 +318,11 @@ encoderUnionSimple name xs =
         constructor ( a, b ) =
             (a ++ "-> " ++ quote a)
     in
-    join "\n" <|        
+    "Encode.string <|\n" ++
+    ( join "\n" <|        
         [ tab 1 "case a of" ] ++
         ( map (tabLines 2) <| map constructor xs )
+    )
 
 
 
