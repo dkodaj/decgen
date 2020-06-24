@@ -7131,7 +7131,7 @@ var $author$project$Encoder$encoderUnionSimple = F2(
 			var b = _v0.b;
 			return a + ('-> ' + $author$project$Destructuring$quote(a));
 		};
-		return A2(
+		return 'Encode.string <|\n' + A2(
 			$elm$core$String$join,
 			'\n',
 			_Utils_ap(
