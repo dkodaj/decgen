@@ -5465,7 +5465,7 @@ var $author$project$ParseType$typeDescr = F2(
 			case 'TypeExtendedRecord':
 				var b = a.a;
 				var fieldString = function (x) {
-					return x.name + (': ' + (A2($author$project$ParseType$typeDescr, false, x.theType) + ', '));
+					return x.generatedName + (': ' + (A2($author$project$ParseType$typeDescr, false, x.theType) + ', '));
 				};
 				var fields = A2(
 					$elm$core$String$dropRight,
@@ -5476,7 +5476,7 @@ var $author$project$ParseType$typeDescr = F2(
 			case 'TypeExtensible':
 				var b = a.a;
 				var fieldString = function (x) {
-					return x.name + (': ' + (A2($author$project$ParseType$typeDescr, false, x.theType) + ', '));
+					return x.generatedName + (': ' + (A2($author$project$ParseType$typeDescr, false, x.theType) + ', '));
 				};
 				var fields = A2(
 					$elm$core$String$dropRight,
@@ -5515,7 +5515,7 @@ var $author$project$ParseType$typeDescr = F2(
 			case 'TypeRecord':
 				var b = a.a;
 				var fieldString = function (x) {
-					return x.name + (': ' + (A2($author$project$ParseType$typeDescr, false, x.theType) + ', '));
+					return x.generatedName + (': ' + (A2($author$project$ParseType$typeDescr, false, x.theType) + ', '));
 				};
 				var fields = A2(
 					$elm$core$String$dropRight,
@@ -5799,7 +5799,7 @@ var $author$project$Decoder$decoderRecord = F3(
 			return A4(
 				$author$project$Decoder$field,
 				fieldNum,
-				$author$project$Destructuring$quote(x.name),
+				$author$project$Destructuring$quote(x.generatedName),
 				subDecoder(x.theType),
 				extra);
 		};
@@ -5907,13 +5907,174 @@ var $author$project$Decoder$decoderUnionComplex = F3(
 							A2($author$project$Destructuring$tab, 3, 'Decode.fail <| \"Unknown constructor for type ' + (name + ': \" ++ other'))
 						]))));
 	});
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
+var $elm$core$Maybe$map2 = F3(
+	function (func, ma, mb) {
+		if (ma.$ === 'Nothing') {
+			return $elm$core$Maybe$Nothing;
+		} else {
+			var a = ma.a;
+			if (mb.$ === 'Nothing') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var b = mb.a;
+				return $elm$core$Maybe$Just(
+					A2(func, a, b));
+			}
+		}
+	});
+var $author$project$Types$typeToString = function (a) {
+	var g = function (x) {
+		return A2(
+			$elm$core$Maybe$map,
+			$author$project$Destructuring$bracketIfSpaced,
+			$author$project$Types$typeToString(x));
+	};
+	var f = F2(
+		function (x, y) {
+			return x + (' ' + y);
+		});
+	var h = F2(
+		function (x, y) {
+			return A2(
+				$elm$core$Maybe$map,
+				f(x),
+				y);
+		});
+	switch (a.$) {
+		case 'TypeArray':
+			var b = a.a;
+			return A2(
+				h,
+				'Array',
+				g(b));
+		case 'TypeBool':
+			return $elm$core$Maybe$Just('Bool');
+		case 'TypeDict':
+			var _v1 = a.a;
+			var b = _v1.a;
+			var c = _v1.b;
+			return A2(
+				h,
+				'Dict',
+				A3(
+					$elm$core$Maybe$map2,
+					f,
+					g(b),
+					g(c)));
+		case 'TypeError':
+			return $elm$core$Maybe$Nothing;
+		case 'TypeExtendedRecord':
+			return $elm$core$Maybe$Nothing;
+		case 'TypeExtensible':
+			return $elm$core$Maybe$Nothing;
+		case 'TypeFloat':
+			return $elm$core$Maybe$Just('Float');
+		case 'TypeImported':
+			var name = a.a;
+			return $elm$core$Maybe$Just(name);
+		case 'TypeInt':
+			return $elm$core$Maybe$Just('Int');
+		case 'TypeList':
+			var b = a.a;
+			return A2(
+				h,
+				'List',
+				g(b));
+		case 'TypeMaybe':
+			var b = a.a;
+			return A2(
+				h,
+				'Maybe',
+				g(b));
+		case 'TypeProduct':
+			var _v2 = a.a;
+			var name = _v2.a;
+			return $elm$core$Maybe$Just(name);
+		case 'TypeRecord':
+			return $elm$core$Maybe$Nothing;
+		case 'TypeString':
+			return $elm$core$Maybe$Just('String');
+		case 'TypeTuple':
+			var list = a.a;
+			var typeFold = F2(
+				function (x, result) {
+					if (result.$ === 'Nothing') {
+						return $elm$core$Maybe$Nothing;
+					} else {
+						var ys = result.a;
+						var _v5 = g(x);
+						if (_v5.$ === 'Just') {
+							var y = _v5.a;
+							return $elm$core$Maybe$Just(
+								A2($elm$core$List$cons, y, ys));
+						} else {
+							return $elm$core$Maybe$Nothing;
+						}
+					}
+				});
+			var _v3 = A3(
+				$elm$core$List$foldr,
+				typeFold,
+				$elm$core$Maybe$Just(_List_Nil),
+				list);
+			if (_v3.$ === 'Nothing') {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				if (!_v3.a.b) {
+					return $elm$core$Maybe$Nothing;
+				} else {
+					var strings = _v3.a;
+					return $elm$core$Maybe$Just(
+						'(' + (A2($elm$core$String$join, ', ', strings) + ')'));
+				}
+			}
+		default:
+			return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$Types$toString = function (a) {
+	var _v0 = a.name;
+	if (_v0.$ === 'Just') {
+		var name = _v0.a;
+		return $elm$core$Maybe$Just(name);
+	} else {
+		return $author$project$Types$typeToString(a.theType);
+	}
+};
 var $author$project$Decoder$decoder = F2(
 	function (extra, typeDef) {
-		var decoderName = 'decode' + ($author$project$Destructuring$removeColons(typeDef.name) + ' =');
+		var decoderName = 'decode' + $author$project$Destructuring$removeColons(typeDef.generatedName);
+		var typeDescription = function (x) {
+			return decoderName + (' : Decode.Decoder ' + x);
+		};
+		var head = function () {
+			var _v1 = $author$project$Types$toString(typeDef);
+			if (_v1.$ === 'Just') {
+				var str = _v1.a;
+				return _List_fromArray(
+					[
+						typeDescription(str),
+						decoderName + ' ='
+					]);
+			} else {
+				return _List_fromArray(
+					[decoderName + ' =']);
+			}
+		}();
 		var decoderBodyRaw = A2(
 			$elm$core$String$split,
 			'\n',
-			A4($author$project$Decoder$decoderHelp, true, typeDef.name, typeDef.theType, extra));
+			A4($author$project$Decoder$decoderHelp, true, typeDef.generatedName, typeDef.theType, extra));
 		var decoderBody = function () {
 			var _v0 = typeDef.theType;
 			if (_v0.$ === 'TypeUnion') {
@@ -5925,15 +6086,15 @@ var $author$project$Decoder$decoder = F2(
 					decoderBodyRaw);
 			}
 		}();
-		return A2($elm$core$List$cons, decoderName, decoderBody);
+		return _Utils_ap(head, decoderBody);
 	});
 var $author$project$ParseType$aliasDefs = function (types) {
 	var name = function (a) {
 		var _v0 = a.theType;
 		if (_v0.$ === 'TypeExtendedRecord') {
-			return a.name + 'Extended';
+			return a.generatedName + 'Extended';
 		} else {
-			return a.name;
+			return a.generatedName;
 		}
 	};
 	var def = function (a) {
@@ -5951,7 +6112,8 @@ var $elm$core$Basics$composeL = F3(
 	});
 var $author$project$ParseType$anonymousType = function (a) {
 	return {
-		name: $author$project$ParseType$typeNick(a),
+		generatedName: $author$project$ParseType$typeNick(a),
+		name: $elm$core$Maybe$Nothing,
 		theType: a
 	};
 };
@@ -6276,7 +6438,7 @@ var $author$project$Types$TypeUnion = function (a) {
 var $author$project$ParseType$extensibleFields = F2(
 	function (allTypDefs, name) {
 		var candidate = function (x) {
-			return _Utils_eq(x.name, name);
+			return _Utils_eq(x.generatedName, name);
 		};
 		var _v0 = A2($elm$core$List$filter, candidate, allTypDefs);
 		if (_v0.b) {
@@ -6523,10 +6685,6 @@ var $author$project$ParseType$grabRawTypes = function (txt) {
 						$author$project$Destructuring$removeStringLiterals(txt))))));
 };
 var $author$project$Types$TypeBool = {$: 'TypeBool'};
-var $author$project$Types$TypeDef = F2(
-	function (name, theType) {
-		return {name: name, theType: theType};
-	});
 var $author$project$Types$TypeError = function (a) {
 	return {$: 'TypeError', a: a};
 };
@@ -6830,10 +6988,11 @@ var $author$project$ParseType$typeOf = F2(
 				var makeField = function (_v5) {
 					var x = _v5.a;
 					var y = _v5.b;
-					return A2(
-						$author$project$Types$TypeDef,
-						x,
-						subType(y));
+					return {
+						generatedName: x,
+						name: $elm$core$Maybe$Nothing,
+						theType: subType(y)
+					};
 				};
 				var fields = function () {
 					var _v4 = a1 === '';
@@ -6974,7 +7133,8 @@ var $author$project$ParseType$typeOf = F2(
 var $author$project$ParseType$grabTypeDefs = function (txt) {
 	var toTypeDef = function (a) {
 		return {
-			name: a.name,
+			generatedName: a.name,
+			name: $elm$core$Maybe$Just(a.name),
 			theType: A2($author$project$ParseType$typeOf, a.extensible, a.def)
 		};
 	};
@@ -7056,7 +7216,7 @@ var $elm$core$List$sortBy = _List_sortBy;
 var $author$project$Destructuring$stringify = function (xs) {
 	return A2(
 		$elm$core$String$join,
-		'\n\n',
+		'\n\n\n',
 		A2(
 			$elm$core$List$map,
 			$elm$core$String$join('\n'),
@@ -7076,7 +7236,7 @@ var $author$project$Generate$decoders = F2(
 					A2(
 						$elm$core$List$sortBy,
 						function ($) {
-							return $.name;
+							return $.generatedName;
 						},
 						allTypes))));
 	});
@@ -7395,7 +7555,7 @@ var $author$project$Encoder$encoderRecord = function (xs) {
 	};
 	var fieldEncode = function (x) {
 		return '(' + ($author$project$Destructuring$quote(
-			$author$project$Destructuring$removeColons(x.name)) + (', ' + (subEncoder(x.theType) + (' a.' + ($author$project$Destructuring$removeColons(x.name) + ')')))));
+			$author$project$Destructuring$removeColons(x.generatedName)) + (', ' + (subEncoder(x.theType) + (' a.' + ($author$project$Destructuring$removeColons(x.generatedName) + ')')))));
 	};
 	return A2(
 		$elm$core$String$join,
@@ -7518,24 +7678,41 @@ var $author$project$Encoder$encoder = function (typeDef) {
 			' ',
 			vars(a));
 	};
-	var name = $author$project$Destructuring$removeColons(typeDef.name);
+	var name = $author$project$Destructuring$removeColons(typeDef.generatedName);
+	var typeDescription = function (x) {
+		return 'encode' + (name + (' : ' + (x + ' -> Decode.Value')));
+	};
 	var encoderName = function () {
-		var _v0 = typeDef.theType;
-		switch (_v0.$) {
+		var _v1 = typeDef.theType;
+		switch (_v1.$) {
 			case 'TypeTuple':
-				var xs = _v0.a;
-				return 'encode' + (name + (' (' + (varListComma(xs) + ') =')));
+				var xs = _v1.a;
+				return 'encode' + (name + (' (' + (varListComma(xs) + ')')));
 			case 'TypeProduct':
-				var _v1 = _v0.a;
-				var b = _v1.a;
-				var c = _v1.b;
+				var _v2 = _v1.a;
+				var b = _v2.a;
+				var c = _v2.b;
 				if (!c.b) {
-					return 'encode' + (name + ' a =');
+					return 'encode' + (name + ' a');
 				} else {
-					return 'encode' + (name + (' (' + (b + (' ' + (varList(c) + ') =')))));
+					return 'encode' + (name + (' (' + (b + (' ' + (varList(c) + ')')))));
 				}
 			default:
-				return 'encode' + (name + ' a =');
+				return 'encode' + (name + ' a');
+		}
+	}();
+	var head = function () {
+		var _v0 = $author$project$Types$toString(typeDef);
+		if (_v0.$ === 'Just') {
+			var str = _v0.a;
+			return _List_fromArray(
+				[
+					typeDescription(str),
+					encoderName + ' ='
+				]);
+		} else {
+			return _List_fromArray(
+				[encoderName + ' =']);
 		}
 	}();
 	var encoderBody = A2(
@@ -7544,8 +7721,8 @@ var $author$project$Encoder$encoder = function (typeDef) {
 		A2(
 			$elm$core$String$split,
 			'\n',
-			A3($author$project$Encoder$encoderHelp, true, typeDef.name, typeDef.theType)));
-	return A2($elm$core$List$cons, encoderName, encoderBody);
+			A3($author$project$Encoder$encoderHelp, true, typeDef.generatedName, typeDef.theType)));
+	return _Utils_ap(head, encoderBody);
 };
 var $author$project$ParseType$extractAll = function (txt) {
 	var _v0 = $author$project$ParseType$extractHelp(txt);
