@@ -38,10 +38,10 @@ aliasDefs types =
         name a =
             case a.theType of
                 TypeExtendedRecord _ ->
-                    a.name ++ "Extended"
+                    a.generatedName ++ "Extended"
 
                 _ ->
-                    a.name
+                    a.generatedName
 
         def a =
             [ "type alias " ++ name a ++ " = " ++ typeDescr True a.theType ]
@@ -51,7 +51,7 @@ aliasDefs types =
 
 anonymousType : Type -> TypeDef
 anonymousType a =
-    { name = typeNick a, theType = a }
+    { name = Nothing, generatedName = typeNick a, theType = a }
 
 
 anonymousTypes : List TypeDef -> List TypeDef
@@ -114,7 +114,7 @@ grabTypeDefs : String -> List TypeDef
 grabTypeDefs txt =
     let
         toTypeDef a =
-            { name = a.name, theType = typeOf a.extensible a.def }
+            { name = Just a.name, generatedName = a.name, theType = typeOf a.extensible a.def }
     in
     map toTypeDef <| grabRawTypes txt
 
@@ -184,7 +184,10 @@ typeOf extensible def =
                 ( a1, a2 ) :: bs ->
                     let
                         makeField ( x, y ) =
-                            TypeDef x (subType y)
+                            { name = Nothing
+                            , generatedName = x
+                            , theType = subType y
+                            }
 
                         fields =
                             case a1 == "" of
@@ -300,7 +303,7 @@ typeDescr bracketIt a =
             --same as TypeRecord
             let
                 fieldString x =
-                    x.name ++ ": " ++ typeDescr False x.theType ++ ", "
+                    x.generatedName ++ ": " ++ typeDescr False x.theType ++ ", "
 
                 fields =
                     dropRight 2 <| String.concat <| map fieldString b
@@ -310,7 +313,7 @@ typeDescr bracketIt a =
         TypeExtensible b ->
             let
                 fieldString x =
-                    x.name ++ ": " ++ typeDescr False x.theType ++ ", "
+                    x.generatedName ++ ": " ++ typeDescr False x.theType ++ ", "
 
                 fields =
                     dropRight 2 <| String.concat <| map fieldString b
@@ -343,7 +346,7 @@ typeDescr bracketIt a =
         TypeRecord b ->
             let
                 fieldString x =
-                    x.name ++ ": " ++ typeDescr False x.theType ++ ", "
+                    x.generatedName ++ ": " ++ typeDescr False x.theType ++ ", "
 
                 fields =
                     dropRight 2 <| String.concat <| map fieldString b
@@ -480,7 +483,7 @@ extensibleFields : List TypeDef -> String -> Maybe (List TypeDef)
 extensibleFields allTypDefs name =
     let
         candidate x =
-            x.name == name
+            x.generatedName == name
     in
     case List.filter candidate allTypDefs of
         x :: _ ->

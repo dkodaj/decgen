@@ -355,7 +355,7 @@ singleSpace txt =
 
 stringify : List (List String) -> String
 stringify xs =
-    join "\n\n" <| map (join "\n") xs
+    (join "\n\n\n" <| map (join "\n") xs)
 
 
 tab n txt =

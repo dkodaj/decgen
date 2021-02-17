@@ -19,12 +19,24 @@ decoder extra typeDef =
                     map (tab 1) decoderBodyRaw
 
         decoderBodyRaw =
-            split "\n" <| decoderHelp True typeDef.name typeDef.theType extra
+            split "\n" <| decoderHelp True typeDef.generatedName typeDef.theType extra
 
         decoderName =
-            "decode" ++ removeColons typeDef.name ++ " ="
+            "decode" ++ removeColons typeDef.generatedName
+
+        typeDescription : String -> String
+        typeDescription x =
+            decoderName ++ " : Decode.Decoder " ++ x
+
+        head =
+            case Types.toString typeDef of
+                Just str ->
+                    [ typeDescription str, decoderName ++ " =" ]
+
+                Nothing ->
+                    [ decoderName ++ " =" ]
     in
-    decoderName :: decoderBody
+    head ++ decoderBody
 
 
 decoderHelp : Bool -> String -> Type -> ExtraPackage -> String
@@ -223,7 +235,7 @@ decoderRecord : String -> List TypeDef -> ExtraPackage -> String
 decoderRecord name xs extra =
     let
         fieldDecode x =
-            field fieldNum (quote x.name) (subDecoder x.theType) extra
+            field fieldNum (quote x.generatedName) (subDecoder x.theType) extra
 
         subDecoder x =
             bracketIfSpaced <| decoderHelp False "" x extra
@@ -235,7 +247,7 @@ decoderRecord name xs extra =
         [ mapper fieldNum
         , tab 1 name
         ]
-            ++ (map (tab 2) <| map fieldDecode xs)
+        ++ (map (tab 2) <| map fieldDecode xs)
 
 
 decoderTuple : List Type -> ExtraPackage -> String

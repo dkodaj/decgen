@@ -44,7 +44,7 @@ parseAll sources =
     -- the two require different sets of typeDefs
     let        
         unique =
-            ListXtra.uniqueBy .name
+            ListXtra.uniqueBy .generatedName
     in
     case sources of
         -- the head of the list is the main module, the tail is the set of dependencies
@@ -94,7 +94,7 @@ pullImportedHelp thisType homeModule modulePool pulled =
                         newType 
                         newHome 
                         modulePool 
-                        ( { name = name, theType = newType } :: pulled )
+                        ( { name = Just name, generatedName = name, theType = newType } :: pulled )
                     
                 Nothing ->
                     pulled
@@ -216,7 +216,7 @@ fetchType : String -> String -> List Module -> Maybe (Type, Module)
 fetchType typeName moduleName modulePool =
     let
         targetDef a =
-            a.name == typeName
+            a.generatedName == typeName
             
         targetModule a =
             a.name == moduleName

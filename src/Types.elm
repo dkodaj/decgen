@@ -1,5 +1,7 @@
 module Types exposing (..)
 
+import Destructuring exposing (bracketIfSpaced)
+
 
 type Type
     = TypeArray Type
@@ -31,7 +33,8 @@ type alias RawType =
     }
 
 type alias TypeDef =
-    { name : String
+    { name : Maybe String
+    , generatedName : String
     , theType : Type
     }
 
@@ -110,3 +113,98 @@ isRecord this =
 
         _ ->
             False
+
+
+toString : TypeDef -> Maybe String
+toString a =
+    case a.name of
+        Just name ->
+            Just name
+
+        Nothing ->
+            typeToString a.theType
+
+
+typeToString : Type -> Maybe String
+typeToString a =
+    let        
+        f : String -> String -> String
+        f x y =
+            x ++ " " ++ y
+
+        g : Type -> Maybe String
+        g x =
+            Maybe.map bracketIfSpaced (typeToString x)
+
+        h : String -> Maybe String -> Maybe String
+        h x y =
+            Maybe.map (f x) y
+    in
+    case a of
+        TypeArray b ->
+            h "Array" (g b)
+        
+        TypeBool ->
+            Just "Bool"
+
+        TypeDict (b,c) ->
+            h "Dict" (Maybe.map2 f (g b) (g c))
+        
+        TypeError _ ->
+            Nothing
+        
+        TypeExtendedRecord _ ->
+            Nothing
+        
+        TypeExtensible _ ->
+            Nothing
+        
+        TypeFloat ->
+            Just "Float"
+        
+        TypeImported name ->
+            Just name
+        
+        TypeInt ->
+            Just "Int"
+        
+        TypeList b ->
+            h "List" (g b)
+
+        TypeMaybe b ->
+            h "Maybe" (g b)
+
+        TypeProduct ( name, _ ) ->
+            Just name
+
+        TypeRecord _ ->
+            Nothing
+
+        TypeString ->
+            Just "String"
+
+        TypeTuple list ->
+            let
+                typeFold : Type -> Maybe (List String) -> Maybe (List String)
+                typeFold x result =
+                    case result of
+                        Nothing ->
+                            Nothing
+
+                        Just ys ->
+                            case g x of
+                                Just y -> Just (y :: ys)
+                                Nothing -> Nothing
+            in
+            case List.foldr typeFold (Just []) list of
+                Nothing ->
+                    Nothing
+
+                Just [] ->
+                    Nothing
+
+                Just strings ->
+                    Just <| "(" ++ String.join ", " strings ++ ")"
+
+        TypeUnion _ ->
+            Nothing

@@ -11,26 +11,38 @@ encoder : TypeDef -> List String
 encoder typeDef =
     let
         encoderBody =
-            map (tab 1) <| split "\n" <| encoderHelp True typeDef.name typeDef.theType
+            map (tab 1) <| split "\n" <| encoderHelp True typeDef.generatedName typeDef.theType
 
         encoderName =
             case typeDef.theType of
                 TypeTuple xs ->
-                    "encode" ++ name ++ " (" ++ varListComma xs ++ ") ="
+                    "encode" ++ name ++ " (" ++ varListComma xs ++ ")"
 
                 TypeProduct ( b, c ) ->
                     case c of
                         [] ->
-                            "encode" ++ name ++ " a ="
+                            "encode" ++ name ++ " a"
 
                         _ ->
-                            "encode" ++ name ++ " (" ++ b ++ " " ++ varList c ++ ") ="
+                            "encode" ++ name ++ " (" ++ b ++ " " ++ varList c ++ ")"
 
                 _ ->
-                    "encode" ++ name ++ " a ="
+                    "encode" ++ name ++ " a"
+
+        typeDescription : String -> String
+        typeDescription x =
+            "encode" ++ name ++  " : " ++ x ++ " -> Decode.Value"
+
+        head =
+            case Types.toString typeDef of
+                Just str ->
+                    [ typeDescription str, encoderName ++ " =" ]
+
+                Nothing ->
+                    [ encoderName ++ " =" ]
 
         name =
-            removeColons typeDef.name
+            removeColons typeDef.generatedName
             --turn "Vec3.vec3" into "Vec3vec3"
 
         vars a =
@@ -42,7 +54,7 @@ encoder typeDef =
         varListComma a =
             join ", " (vars a)
     in
-    encoderName :: encoderBody
+    head ++ encoderBody
 
 
 encoderHelp : Bool -> String -> Type -> String
@@ -271,7 +283,7 @@ encoderRecord : List TypeDef -> String
 encoderRecord xs =
     let
         fieldEncode x =
-            "(" ++ quote (removeColons x.name) ++ ", " ++ subEncoder x.theType ++ " a." ++ removeColons x.name ++ ")"
+            "(" ++ quote (removeColons x.generatedName) ++ ", " ++ subEncoder x.theType ++ " a." ++ removeColons x.generatedName ++ ")"
 
         subEncoder x =
             encoderHelp False "" x

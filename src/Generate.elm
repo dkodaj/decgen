@@ -24,7 +24,7 @@ decodersWithImports : ExtraPackage -> List String -> String
 decodersWithImports extra sources =
     stringify <|
         ( map (decoder extra)
-            <| sortBy .name
+            <| sortBy .generatedName
                 <| ParseModules.parseAll sources 
         )
 
@@ -32,7 +32,7 @@ encodersWithImports : List String -> String
 encodersWithImports sources =
     stringify <|
         ( map encoder
-            <| sortBy .name
+            <| sortBy .generatedName
                 <| ParseModules.parseAll sources 
         )
 
@@ -53,7 +53,7 @@ decoders extra txt =
     stringify <|
         anonymousDefs
             ++ (map (decoder extra)
-                <| sortBy .name allTypes)
+                <| sortBy .generatedName allTypes)
 
 
 encoders : String -> String
