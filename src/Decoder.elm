@@ -26,7 +26,7 @@ decoder extra typeDef =
 
         typeDescription : String -> String
         typeDescription x =
-            decoderName ++ " : Decode.Decoder " ++ x
+            decoderName ++ " : Decoder " ++ x
 
         head =
             case Types.toString typeDef of

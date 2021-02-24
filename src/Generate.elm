@@ -132,7 +132,7 @@ imports output =
             maybe "Dict" Nothing
 
         importDec =
-            maybe "Json.Decode" (Just "Decode")
+            [ "import Json.Decode as Decode exposing (Decoder, Value)" ]
 
         importDecExtra =
             maybe "Json.Decode.Extra" (Just "Extra")

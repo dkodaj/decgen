@@ -31,7 +31,7 @@ encoder typeDef =
 
         typeDescription : String -> String
         typeDescription x =
-            "encode" ++ name ++  " : " ++ x ++ " -> Decode.Value"
+            "encode" ++ name ++  " : " ++ x ++ " -> Value"
 
         head =
             case Types.toString typeDef of
